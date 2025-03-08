@@ -1,4 +1,0 @@
-o<spindle-unorient> sub
-M65 P8 ;spindle unorient
-o<spindle-unorient> endsub
-M2
