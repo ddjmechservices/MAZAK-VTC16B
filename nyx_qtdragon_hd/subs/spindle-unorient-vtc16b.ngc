@@ -1,0 +1,4 @@
+o<spindle-unorient-vtc16b> sub
+M65 P8 ;spindle unorient
+o<spindle-unorient-vtc16b> endsub
+M2

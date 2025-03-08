@@ -1,0 +1,9 @@
+o<carousel-retract-vtc16b> sub
+M65 P2 ;extend off
+M64 P3 ;retract on
+M66 P12 L3 Q5 ;check retracted
+o101 if [#5399 LT 0]
+	(abort, CAROUSEL RETRACT FAILED!)
+O101 endif
+o<carousel-retract-vtc16b> endsub
+M2

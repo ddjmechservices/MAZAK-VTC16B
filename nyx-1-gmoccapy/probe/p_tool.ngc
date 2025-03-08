@@ -1,0 +1,21 @@
+o<p_tool> sub
+
+#<search_distance> = #1 (=-1.0000 Search distance)
+#<latch_distance> = #2 (=0.0500 Latch distance)
+#<search_feed_rate> = #3 (=10.0000 Search feed rate)
+#<probe_feed_rate> = #4 (=1.0000 Probe feed rate)
+#<retract_feed_rate> = #5 (=60.0000 Retract feed rate)
+#<tool_setter_height> = #6 (=2.6439 Tool setter height)
+
+M70
+
+G91 G49 G59.3
+G38.2 Z#<search_distance> F#<search_feed_rate>
+G01 Z#<latch_distance> F#<retract_feed_rate>
+G38.2 Z[#<latch_distance>*-2] F#<probe_feed_rate>
+G10 L1 P#<_current_tool> Z[#<_z>-#<tool_setter_height>]
+G00 G90 G53 Z2.9527
+
+M72
+
+o<p_tool> endsub

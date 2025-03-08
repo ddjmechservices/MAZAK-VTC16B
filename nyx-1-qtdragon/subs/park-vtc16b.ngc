@@ -1,0 +1,7 @@
+o<park-vtc16b> sub
+M70
+G20 G90
+G00 G53 Z-1.
+G00 G53 X-1. Y-1. 
+M72
+o<park> endsub

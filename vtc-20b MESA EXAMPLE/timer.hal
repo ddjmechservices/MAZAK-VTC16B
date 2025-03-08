@@ -1,0 +1,16 @@
+# This will be the timer.hal file
+
+# give the interval to set a alarm in minutes
+setp timer.periode_time_machine 2
+setp timer.periode_time_spindle 1
+
+net  machine    timer.machine_on    <=    halui.machine.is-on
+net  spindle    timer.spindle_on    <=    halui.spindle.0.is-on
+net  running    timer.running       <=    halui.program.is-running
+
+net num_peris_ma   timer.elapsed_periodes_machine  # =>  a label pin or what ever you want to do with this information 
+net num_peris_sp   timer.elapsed_periodes_spindle  # =>  a label pin or what ever you want to do with this information 
+
+net alarm_machine  timer.alarm_machine             # =>  to a pin to connect a light on, or may be a lube signal
+net alarm_spindle  timer.alarm_spindle             # =>  to a pin to connect a light on, or may be a lube signal
+

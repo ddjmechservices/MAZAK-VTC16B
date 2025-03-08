@@ -1,0 +1,12 @@
+o<drawbar-clamp> sub
+M65 P1 ;drawbar unclamp off
+M64 P0 ;drawbar clamp on
+G4 P.5 ;dwell
+M65 P0 ;drawbar clamp off
+M66 P8 L3 Q5
+o101 if [#5399 LT 0]
+	(abort, DRAWBAR CLAMP FAILED!)
+O101 endif
+M20 ;spindle unorient
+o<drawbar-clamp> endsub
+M2

@@ -1,0 +1,11 @@
+o<drawbar-unclamp-vtc16b> sub
+M05 ;spindle off
+M18 ;spindle orient
+M65 P0 ;drawbar clamp off
+M64 P1 ;drawbar unclamp on
+M66 P7 L3 Q5
+o101 if [#5399 LT 0]
+	(abort, DRAWBAR UNCLAMP FAILED!)
+O101 endif
+o<drawbar-unclamp-vtc16b> endsub
+M2

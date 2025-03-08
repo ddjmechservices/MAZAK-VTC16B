@@ -1,0 +1,50 @@
+o<m6> sub
+
+(save current position)
+#<x> = #5420
+#<y> = #5421
+#<z> = #5422
+
+(save parameters)
+#<tool> = #<_selected_tool>
+#<pocket> = #<_selected_pocket>
+
+(cancel tool offset)
+G49
+
+(move to tool change position)
+G53 G0 Z0
+G53 G0 X-150 Y-194.375
+
+(if tool in spindle, do tool change)
+o100 if [#<_current_tool> GT 0]
+    M5 (stop spindle)
+    M18 (spindle orient)
+    M21 (drawbar unclamp)
+    M24 (carousel retract)
+    M25 (carousel forward)
+    M27 (carousel index)
+    M23 (carousel extend)
+    M22 (drawbar clamp)
+    M24 (carousel retract)
+    M20 (spindle unorient)
+o100 endif
+
+(get new tool)
+M23 (carousel extend)
+M21 (drawbar unclamp)
+M24 (carousel retract)
+M25 (carousel forward)
+M27 (carousel index)
+M23 (carousel extend)
+M22 (drawbar clamp)
+M24 (carousel retract)
+M20 (spindle unorient)
+
+(restore position)
+G53 G0 Z0
+G53 G0 X#<x> Y#<y>
+G0 Z#<z>
+
+o<m6> endsub
+M2

@@ -1,0 +1,8 @@
+o<spindle-orient> sub
+M64 P8 ;orient
+M66 P17 L3 Q5 ;check oriented
+o101 if [#5399 LT 0]
+	(abort, SPINDLE ORIENT FAILED!)
+O101 endif
+o<spindle-orient> endsub
+M2

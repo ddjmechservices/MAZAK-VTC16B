@@ -1,0 +1,25 @@
+o<carousel-forward> sub
+
+M66 E0 L0
+#5399 = [#5399 + 1]
+o101 if [#5399 GT 24]
+	#5399 = 1
+o101 endif
+
+M68 E0 Q#5399 ;requested tool
+M65 P6 ;brake off
+G4 P.001 ;dwell
+M64 P7 ;start carousel
+G4 P.001 ;dwell
+M66 P16 L3 Q60 ; wait for carousel finished
+o102 if [#5399 LT 0]
+	(ABORT, FAILED TO ALIGN CAROUSEL!)
+o102 endif
+G4 P.001 ;dwell
+M64 P6 ;brake on
+G4 P.1 ;dwell
+M65 P6 ;brake off
+M65 P7 ;stop carousel
+
+o<carousel-forward> endsub [1]
+M2

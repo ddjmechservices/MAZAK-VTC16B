@@ -1,0 +1,14 @@
+o<on_abort> sub
+(debug, Abort handler executed)
+(debug, Resetting machine state)
+
+M5 ; stop spindle
+M9 ; coolant off
+M65 P1 ; drawbar unclamp off
+M65 P2 ; carousel extend off
+M65 P3 ; carousel retract off
+M65 P7 ; stop carousel
+M65 P8 ; spindle unorient off
+
+o<on_abort> endsub
+M2

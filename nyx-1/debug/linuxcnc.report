@@ -1,0 +1,137 @@
+Error report created by /usr/lib/tcltk/linuxcnc/show_errors.tcl:
+
+Print file information:
+RUN_IN_PLACE=no
+LINUXCNC_DIR=
+LINUXCNC_BIN_DIR=/usr/bin
+LINUXCNC_TCL_DIR=/usr/lib/tcltk/linuxcnc
+LINUXCNC_SCRIPT_DIR=
+LINUXCNC_RTLIB_DIR=/usr/lib/linuxcnc/modules
+LINUXCNC_CONFIG_DIR=
+LINUXCNC_LANG_DIR=/usr/lib/tcltk/linuxcnc/msgs
+INIVAR=inivar
+HALCMD=halcmd
+LINUXCNC_EMCSH=/usr/bin/wish8.6
+LINUXCNC - 2.9.4nyx53
+Machine configuration directory is '/home/burketruck/linuxcnc/configs/nyx-1'
+Machine configuration file is 'nyx-mds.ini'
+INIFILE=/home/burketruck/linuxcnc/configs/nyx-1/nyx-mds.ini
+VERSION=1.1
+PARAMETER_FILE=nyx1-vtc16b.var
+TPMOD=
+HOMEMOD=
+TASK=milltask
+HALUI=halui
+DISPLAY=axis
+COORDINATES=X Y Z
+KINEMATICS=trivkins
+Starting LinuxCNC...
+Starting LinuxCNC server program: linuxcncsvr
+Loading Real Time OS, RTAPI, and HAL_LIB modules
+Starting LinuxCNC IO program: iov2
+Starting HAL User Interface program: halui
+linuxcnc TPMOD=tpmod HOMEMOD=homemod EMCMOT=motmod
+Found file(REL): ./nyx-vtc16b.hal
+Found file(REL): ./nyx-1-vtc16b-io.hal
+Found file(REL): ./nyx-1-vtc16b.hal
+Found file(REL): ./nyx-mds-sp.hal
+Found file(REL): ./nyx-1-vtc16b-carousel.hal
+Shutting down and cleaning up LinuxCNC...
+iov2: exiting
+Removing HAL_LIB, RTAPI, and Real Time OS modules
+Removing NML shared memory segments
+
+Debug file information:
+Note: Using POSIX realtime
+./nyx-1-vtc16b.hal:8: Warning: File contains DOS-style line endings.
+HAL: ERROR: function 'carousel' not found
+./nyx-1-vtc16b-carousel.hal:6: addf failed
+10725
+Stopping realtime threads
+Unloading hal components
+Note: Using POSIX realtime
+
+
+
+-----------------------------------------------------------------------
+Info report created by linuxcnc_info:
+The file:    /tmp/linuxcnc_info.txt
+can be posted to a forum or a web site like:
+     http://pastebin.com
+in order to provide information about the linuxcnc
+system and configuration.
+
+                Date: Wed Feb 26 03:59:38 PM CST 2025
+            UTC Date: Wed Feb 26 09:59:38 PM UTC 2025
+        this program: /usr/bin/linuxcnc_info
+              uptime: 15:59:38 up 5:04, 0 user, load average: 1.69, 2.14, 2.06
+     lsb_release -sa: Debian Debian GNU/Linux 12 (bookworm) 12 bookworm
+            linuxcnc: /usr/bin/linuxcnc
+                 pwd: /home/burketruck/linuxcnc/configs/nyx-1
+                USER: burketruck
+             LOGNAME: burketruck
+                HOME: /home/burketruck
+              EDITOR: 
+              VISUAL: 
+            LANGUAGE: 
+                TERM: dumb
+           COLORTERM: 
+             DISPLAY: :10.0
+             DESKTOP: xfce
+        display size: 1920x1080 pixels (508x286 millimeters)
+                PATH: /usr/bin:/home/burketruck/linuxcnc/configs/nyx-1/bin:/usr/bin:/sbin:/bin:/usr/bin:/usr/local/bin
+
+uname items:
+         nodename -n: MAZAK-VTC16B
+      kernel-name -s: Linux
+      kernel-vers -v: #1 SMP PREEMPT_RT Debian 6.1.128-1 (2025-02-07)
+          machine -m: x86_64
+        processor -p: unknown
+         platform -i: unknown
+      oper system -o: GNU/Linux
+
+/proc items:
+             cmdline: BOOT_IMAGE=/boot/vmlinuz-6.1.0-31-rt-amd64 root=UUID=09a5fa42-2c0e-4c9c-8af4-6bf5a137b7bf ro initrd=/install/gtk/initrd.gz quiet
+          model name: Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz
+               cores: 4
+             cpu MHz: 3724.905
+             parport: 
+              serial: 0000-0000 : serial 0000-0000 : serial
+
+Versions:
+                 gcc: gcc (Debian 12.2.0-14) 12.2.0
+              python: Python 3.11.2
+                 git: git version 2.39.5
+          git commit: NA
+                 tcl: 8.6
+                  tk: 8.6
+               glade: not_in_PATH
+
+linuxcnc_var all:
+
+     LINUXCNCVERSION: 2.9.4nyx53
+LINUXCNC_AUX_GLADEVCP: /usr/share/linuxcnc/aux_gladevcp
+LINUXCNC_AUX_EXAMPLES: /usr/share/linuxcnc/aux_examples
+            REALTIME: /usr/lib/linuxcnc/realtime
+                 RTS: uspace
+          HALLIB_DIR: /usr/share/linuxcnc/hallib
+              PYTHON: /usr/bin/python3
+
+dpkg -l '*linuxcnc*':
+Desired=Unknown/Install/Remove/Purge/Hold
+| Status=Not/Inst/Conf-files/Unpacked/halF-conf/Half-inst/trig-aWait/Trig-pend
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)
+||/ Name                Version      Architecture Description
++++-===================-============-============-=====================================================================
+un  linuxcnc            <none>       <none>       (no description available)
+un  linuxcnc-dev        <none>       <none>       (no description available)
+un  linuxcnc-doc        <none>       <none>       (no description available)
+ii  linuxcnc-doc-de     1:2.9.4      all          motion controller for CNC machines and robots (German documentation)
+ii  linuxcnc-doc-en     1:2.9.4      all          motion controller for CNC machines and robots (English documentation)
+ii  linuxcnc-doc-es     1:2.9.4      all          motion controller for CNC machines and robots (Spanish documentation)
+ii  linuxcnc-doc-fr     1:2.9.4      all          motion controller for CNC machines and robots (French documentation)
+un  linuxcnc-sim        <none>       <none>       (no description available)
+un  linuxcnc-sim-dev    <none>       <none>       (no description available)
+ii  linuxcnc-uspace     1:2.9.4nyx53 amd64        motion controller for CNC machines and robots
+ii  linuxcnc-uspace-dev 1:2.9.4nyx53 amd64        PC based motion controller for real-time Linux
+

@@ -1,0 +1,9 @@
+o<carousel-extend-vtc16b> sub
+M65 P3 ;retract off
+M64 P2 ;extend on
+M66 P11 L3 Q5 ;check extended
+o101 if [#5399 LT 0]
+	(abort, CAROUSEL EXTEND FAILED!)
+O101 endif
+o<carousel-extend-vtc16b> endsub
+M2

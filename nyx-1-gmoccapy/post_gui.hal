@@ -1,0 +1,94 @@
+############
+# IO PANEL #
+############
+
+net jog-override io.jog_hbar
+net velocity-overrride io.velocity_hbar halui.rapid-override.value
+net feed-override io.feed_hbar halui.feed-override.value
+net spindle-override io.spindle_hbar halui.spindle.0.override.value
+net pendant-x io.pendant-x_led
+net pendant-y io.pendant-y_led
+net pendant-z io.pendant-z_led
+net pendant-4 io.pendant-4_led
+#net pendant-5 io.pendant-5_led
+#net pendant-6 io.pendant-6_led
+#net pendant-x1 io.pendant-x1_led
+#net pendant-x10 io.pendant-x10_led
+#net pendant-x100 io.pendant-x100_led
+#net pendant-estop-in io.pendant-estop_led
+net drawbar-unclamped io.drawbar-unclamped_led
+net drawbar-clamped io.drawbar-clamped_led
+net drawbar-unclamp io.drawbar-unclamp_led
+net drawbar-clamp io.drawbar-clamp_led
+net carousel-index io.carousel-index_led
+net carousel-in-position io.carousel-pulse_led
+net carousel-extended io.carousel-extended_led
+net carousel-extend io.carousel-extend_led
+net carousel-retracted io.carousel-retracted_led
+net carousel-retract io.carousel-retract_led
+net carousel-forward io.carousel-forward_led
+net carousel-reverse io.carousel-reverse_led
+net carousel-brake io.carousel-brake_led
+net carousel-position io.current-pocket_label carousel.0.current-position
+net carousel-requested-s32 io.requested-pocket_label
+
+net estop-signal-out io.way-lube_led
+
+#################################
+# Servo Amps
+#################################
+
+net nyx-phase nyx.0.phase io.controller_label
+
+net trq0 nyx.0.servo-00.trq-fb io.x-torque_hbar
+net trq1 nyx.0.servo-01.trq-fb io.y-torque_hbar
+net trq2 nyx.0.servo-02.trq-fb io.z-torque_hbar
+net trq3 nyx.0.servo-03.trq-fb io.spindle-torque_hbar
+
+net reset-alarm io.reset_button
+net reset-alarm nyx.0.servo-00.reset-alarm
+net reset-alarm nyx.0.servo-01.reset-alarm
+net reset-alarm nyx.0.servo-02.reset-alarm
+net reset-alarm nyx.0.servo-03.reset-alarm
+
+net code0 nyx.0.servo-00.alarm-code io.x-status_label
+net code1 nyx.0.servo-01.alarm-code io.y-status_label
+net code2 nyx.0.servo-02.alarm-code io.z-status_label
+net code3 nyx.0.servo-03.alarm-code io.spindle-status_label
+
+net s-vel-fb gmoccapy.spindle_feedback_bar
+net s-at-speed gmoccapy.spindle_at_speed_led
+
+#################################
+# GMOCCAPY Overrides
+#################################
+
+loadrt conv_s32_float
+addf conv-s32-float.0 servo-thread
+
+loadrt scale
+addf scale.0 servo-thread
+setp scale.0.gain .25
+
+net pendant-counts conv-s32-float.0.in
+net override-counts-float scale.0.in conv-s32-float.0.out
+net override-counts-conv scale.0.out conv-float-s32.1.in
+
+net override-counts-scaled conv-float-s32.1.out 
+net override-counts-scaled gmoccapy.jog.jog-velocity.counts
+net override-counts-scaled gmoccapy.feed.feed-override.counts
+net override-counts-scaled gmoccapy.spindle.spindle-override.counts
+net override-counts-scaled gmoccapy.rapid.rapid-override.counts
+
+net pendant-5 hm2_7i76e.0.7i76.0.0.input-21
+net pendant-5 gmoccapy.rapid.rapid-override.count-enable
+net pendant-5 gmoccapy.feed.feed-override.count-enable
+
+net pendant-6 hm2_7i76e.0.7i76.0.0.input-22
+net pendant-6 gmoccapy.spindle.spindle-override.count-enable
+
+#################################
+# GMOCCAPY MDI Trigger
+#################################
+
+net pendant-x gmoccapy.v-button.button-2

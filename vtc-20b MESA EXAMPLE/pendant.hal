@@ -1,0 +1,76 @@
+loadrt estop_latch
+addf estop-latch.0 servo-thread
+
+loadrt oneshot
+addf oneshot.0 servo-thread
+setp oneshot.0.width 1
+setp oneshot.0.retriggerable 0
+setp oneshot.0.rising 1
+
+loadrt timedelay
+addf timedelay.0 servo-thread
+
+loadrt mux8 count=1
+addf mux8.0 servo-thread
+
+setp mux8.0.in1 0.00064
+setp mux8.0.in2 0.0064
+setp mux8.0.in4 0.064
+
+setp joint.0.jog-vel-mode 1
+setp axis.x.jog-vel-mode 1
+setp joint.1.jog-vel-mode 1
+setp axis.y.jog-vel-mode 1
+setp joint.2.jog-vel-mode 1
+setp axis.z.jog-vel-mode 1
+setp joint.3.jog-vel-mode 1
+setp axis.a.jog-vel-mode 1
+
+net pendant-x1 mux8.0.sel0 hm2_7i76e.0.7i76.0.0.input-23
+net pendant-x10 mux8.0.sel1 hm2_7i76e.0.7i76.0.0.input-24
+net pendant-x100 mux8.0.sel2 hm2_7i76e.0.7i76.0.0.input-25
+
+net pendant-scale mux8.0.out
+
+net pendant-scale joint.0.jog-scale
+net pendant-scale axis.x.jog-scale
+net pendant-scale joint.1.jog-scale
+net pendant-scale axis.y.jog-scale
+net pendant-scale joint.2.jog-scale
+net pendant-scale axis.z.jog-scale
+net pendant-scale joint.3.jog-scale
+net pendant-scale axis.a.jog-scale
+
+net pendant-counts hm2_7i76e.0.encoder.00.count
+net pendant-counts joint.0.jog-counts
+net pendant-counts axis.x.jog-counts
+net pendant-counts joint.1.jog-counts
+net pendant-counts axis.y.jog-counts
+net pendant-counts joint.2.jog-counts
+net pendant-counts axis.z.jog-counts
+net pendant-counts joint.3.jog-counts
+net pendant-counts axis.a.jog-counts
+
+net pendant-estop-in or2.0.in1 hm2_7i76e.0.7i76.0.0.input-16-not
+net estop-signal-in estop-latch.0.fault-in or2.0.out
+net estop-signal-out iocontrol.0.emc-enable-in estop-latch.0.ok-out
+net pendant-estop-out estop-latch.0.reset oneshot.0.in hm2_7i76e.0.7i76.0.0.input-16
+
+net machine-on-delay timedelay.0.in oneshot.0.out
+net machine-on-signal halui.machine.on timedelay.0.out
+
+net pendant-x hm2_7i76e.0.7i76.0.0.input-17
+net pendant-x joint.0.jog-enable
+net pendant-x axis.x.jog-enable
+
+net pendant-y hm2_7i76e.0.7i76.0.0.input-18
+net pendant-y joint.1.jog-enable
+net pendant-y axis.y.jog-enable
+
+net pendant-z hm2_7i76e.0.7i76.0.0.input-19
+net pendant-z joint.2.jog-enable
+net pendant-z axis.z.jog-enable
+
+net pendant-4 hm2_7i76e.0.7i76.0.0.input-20
+net pendant-4 joint.3.jog-enable
+net pendant-4 axis.a.jog-enable
