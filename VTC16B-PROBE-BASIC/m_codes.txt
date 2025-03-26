@@ -1,0 +1,175 @@
+=============================================================
+ LinuxCNC M-Code Reference (Plain Text)
+=============================================================
+
+-------------------------------------------------------------
+M0 - Program Stop (Pause)
+-------------------------------------------------------------
+• Execution of the program is paused until the operator resumes.
+• Spindle, coolant, and other machine states remain as they were.
+• Resuming continues from the next line of G-code.
+
+-------------------------------------------------------------
+M1 - Optional Program Stop
+-------------------------------------------------------------
+• Same as M0, except it only takes effect if optional stops are enabled on the controller.
+• Allows the operator to selectively enable or ignore certain pauses.
+
+-------------------------------------------------------------
+M2 - Program End
+-------------------------------------------------------------
+• Ends the G-code program.
+• Execution returns control to the machine or CNC interface, but does not rewind the file.
+• Typically used when no repeated execution of the same file is needed.
+
+-------------------------------------------------------------
+M30 - Program End, Rewind
+-------------------------------------------------------------
+• Ends the G-code program and rewinds it (if the system and interface support rewinding).
+• Often used in place of M2 when the code may be re-run or restarted from the top.
+
+-------------------------------------------------------------
+M6 - Tool Change
+-------------------------------------------------------------
+• Instructs a tool change (if the machine has an automatic tool changer, it may actuate it).
+• Typically followed by Tnn (tool number) indicating which tool to load.
+• Behavior is configurable (for example, may pause for manual tool change on simpler machines).
+
+-------------------------------------------------------------
+M60 - Programmed Pause for Part/Tool Handling
+-------------------------------------------------------------
+• Often used to pause for part flip, fixture change, or manual tool change, depending on setup.
+• Behavior can be machine- or user-defined.
+
+-------------------------------------------------------------
+M3 - Spindle On (Clockwise)
+-------------------------------------------------------------
+• Turns spindle on in a clockwise rotation.
+• Commonly used with Snnnn to set spindle speed (e.g., S1200 for 1200 RPM).
+• Remains active until changed or stopped.
+
+-------------------------------------------------------------
+M4 - Spindle On (Counterclockwise)
+-------------------------------------------------------------
+• Similar to M3 but starts the spindle in the counterclockwise direction.
+• Use only one spindle direction command at a time (M3 or M4).
+• Spindle speed is often set via Snnnn as well.
+
+-------------------------------------------------------------
+M5 - Spindle Stop
+-------------------------------------------------------------
+• Stops the spindle.
+• Use this before changing rotational direction or before a tool change (in many machines).
+
+-------------------------------------------------------------
+M7 - Mist Coolant On
+-------------------------------------------------------------
+• Activates the “mist” coolant output if configured.
+• May require the machine to have a misting system or specialized coolant lines.
+
+-------------------------------------------------------------
+M8 - Flood Coolant On
+-------------------------------------------------------------
+• Activates the flood coolant pump/output.
+• Typically used where continuous coolant flow over the cutting area is required.
+
+-------------------------------------------------------------
+M9 - Coolant Off
+-------------------------------------------------------------
+• Turns off all coolant outputs (mist, flood, or both).
+• Stops the coolant flow from M7/M8.
+
+-------------------------------------------------------------
+M48 - Enable Speed and Feed Override
+-------------------------------------------------------------
+• Enables the operator’s front-panel or software feedrate/spindle overrides.
+• Overrides allow adjusting feed/spindle speed in real-time.
+
+-------------------------------------------------------------
+M49 - Disable Speed and Feed Override
+-------------------------------------------------------------
+• Prevents the operator from changing feedrate or spindle speed overrides.
+• Useful for delicate sections of a program where consistent feed/spindle is critical.
+
+-------------------------------------------------------------
+M47 - Rewind / Repeat Program
+-------------------------------------------------------------
+• Restarts the program from the first line after encountering M47.
+• Often used for looping or repeating certain operations indefinitely (until stopped).
+
+-------------------------------------------------------------
+M61 Q<number> - Load Tool Table Offset
+-------------------------------------------------------------
+• Loads offset data from the tool table for a specified tool number (Q).
+• Syntax example: M61 Q3 loads the offsets for tool 3 from the table.
+• Often used in custom or advanced offset logic scenarios.
+
+-------------------------------------------------------------
+M62 / M63 - Queued Digital Output On / Off
+-------------------------------------------------------------
+• M62 Pn turns on digital output n in a motion-synchronized (queued) way.
+• M63 Pn turns off digital output n in a motion-synchronized (queued) way.
+• Allows precise timing with motion (the output command is buffered with the move).
+
+-------------------------------------------------------------
+M64 / M65 - Immediate Digital Output On / Off
+-------------------------------------------------------------
+• M64 Pn turns on digital output n immediately.
+• M65 Pn turns off digital output n immediately.
+• Non-synchronized with motion; the output changes as soon as the command is interpreted.
+
+-------------------------------------------------------------
+M66 - Wait on Input
+-------------------------------------------------------------
+• Pauses program execution until a specified digital or analog input meets certain conditions.
+• Syntax example: M66 Pn (Pin number) Lx (Logic condition) Qy (Timeout).
+• Useful for waiting on external triggers (switches, sensors, etc.).
+
+-------------------------------------------------------------
+M67 / M68 - Queued Analog Output
+-------------------------------------------------------------
+• M67 sets a motion-synchronized analog output (e.g., M67 E0 Q0.75).
+• M68 is similar but can handle different usage modes or addresses.
+• Allows for fine control of analog signals (e.g., servo controls, lasers, etc.) tied to motion.
+
+-------------------------------------------------------------
+M70 / M71 - Save and Restore Modal States (Fixture Offsets)
+-------------------------------------------------------------
+• M70 can save the current G-code modal state (e.g., fixture offsets, tool offsets).
+• M71 restores the modal state saved by M70.
+• Helpful for temporarily switching offsets or machine states during a cycle.
+
+-------------------------------------------------------------
+M72 - Restore Linear / Rotary Axes to a Previously Saved State
+-------------------------------------------------------------
+• May be used to restore a previously saved axis position, depending on config.
+• Implementation can vary; often used in advanced custom macros.
+
+-------------------------------------------------------------
+M98 - Call Subroutine
+-------------------------------------------------------------
+• Invokes a subroutine stored in the same file or in a separate file.
+• Syntax: M98 P<subroutine> L<repeat_count>.
+• M99 is used to return from the subroutine.
+
+-------------------------------------------------------------
+M99 - Subroutine Return / Loop End
+-------------------------------------------------------------
+• If in a subroutine called by M98, M99 returns control to the main program.
+• If in the main program (with M47 usage), M99 can loop back to a chosen label or program start.
+• Behavior depends on context and how it’s called.
+
+-------------------------------------------------------------
+M100 to M199 - User-Defined (Custom) M-codes
+-------------------------------------------------------------
+• Reserved for custom macros or behaviors. 
+• Typically remapped in the HAL or INI configuration to scripts (e.g., M100 might run a Python or Bash script).
+• Used for things like controlling custom hardware, logging data, etc.
+
+-------------------------------------------------------------
+NOTES:
+-------------------------------------------------------------
+• Some M-codes above (M70, M71, M72, etc.) may not be used on every installation.
+• M47, M98, and M99 are especially useful for loops and subroutines.
+• Many codes accept parameters (P, Q, L, S) which vary per machine or per code.
+• Always consult your machine's INI/HAL configuration and the official LinuxCNC docs for exact usage.
