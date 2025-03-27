@@ -21,7 +21,7 @@ M65 P4 ; Stop motor
 
 (DEBUG, EVAL[vcp.getWidget{"dynatc"}.atc_message{}])
 
-#<number_of_pockets> = 12
+#<number_of_pockets> = 24
 o110 if [EXISTS[#<_ini[atc]pockets>]]
     #<number_of_pockets> = #<_ini[atc]pockets>
 o110 endif

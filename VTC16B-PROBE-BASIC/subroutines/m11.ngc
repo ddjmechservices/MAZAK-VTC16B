@@ -13,7 +13,7 @@ o100 if [#3989 NE 1]
 o100 endif
 
 ; default to a 12 pocket ATC (matching DynATC Widget behaviour), then update based on INI settings
-#<number_of_pockets> = 12
+#<number_of_pockets> = 24
 o110 if [EXISTS[#<_ini[atc]pockets>]]
     #<number_of_pockets> = #<_ini[atc]pockets>
 o110 endif
