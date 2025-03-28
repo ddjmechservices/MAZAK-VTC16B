@@ -1,11 +1,12 @@
 o<m25> sub
 (PRINT, o<m25>)
 
-M64 P0 ; Move Carousel out
+M65 P1 ; Turn off carousel retract solenoid
+M64 P0 ; Turn on carousel extend solenoid
 
-M66 P1 L3 Q5 ; check for carousel out sensor
+M66 P1 L3 Q5 ; check for carousel extended sensor
 o100 if [#5399 LT 0]
-    M65 P0 ; switch off atc out solenoid
+    M65 P0 ; switch off atc extend solenoid
     (abort, ATC not in position)
 o100 endif
 

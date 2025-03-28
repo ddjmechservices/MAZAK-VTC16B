@@ -20,8 +20,8 @@ o100 if [#<_task> EQ 0]
     o<toolchange> return [999]
 o100 endif (this code eliminates tool missing error on load for multiple use tools)
 
-; default to a 12 pocket ATC (matching DynATC Widget behaviour), then update based on INI settings
-#<number_of_pockets> = 12
+; default to a 24 pocket ATC (matching DynATC Widget behaviour), then update based on INI settings
+#<number_of_pockets> = 24
 o110 if [EXISTS[#<_ini[atc]pockets>]]
     #<number_of_pockets> = #<_ini[atc]pockets>
 o110 endif
@@ -97,12 +97,12 @@ G0 G53 Z#<atc_z_tool_clearance_height> ; move z to clear height
 
 o190 if [#<selected_tool> GT 0] ; selected tool is not tool0
     M10 P#<next_pocket> ; set the carousel to move to the right pocket for the selected tool
-    M65 P1
-    M64 P0
-    M66 P1 L3 Q5 ; check carousel out position sensor
+    M65 P1 ; Turn off carousel retract solenoid
+    M64 P0 ; Turn on carousel extend solenoid
+    M66 P1 L3 Q5 ; check carousel extended position sensor
     o191 if [#5399 LT 0]
-        M65 P0 ; turn off the solenoid to send atc to tool change
-        (abort, Failed to send carousel home) ; abort if the sensor does not activate in 5 seconds
+        M65 P0 ; turn off the carousel extend
+        (abort, Failed to extend carousel) ; abort if the sensor does not activate in 5 seconds
     o191 endif
     M65 P0
 
@@ -112,13 +112,14 @@ o190 if [#<selected_tool> GT 0] ; selected tool is not tool0
     #[4000 + #150] = 0 ; empty the pocket
     #3991 = #<selected_tool> ; Set persistent variable to remember tool in spindle after power cycle
 o190 else
-    M65 P2 ; deactive drawbar
-    M65 P0 ; make sure ATC out solenoid is off
-    M64 P1 ; move carousel home
-    M66 P0 L3 Q4 ; check carousel in position sensor
+    M65 P5 ; turn off tool unclamp solenoid
+    M64 P2 ; turn on tool clamp solenoidr
+    M65 P0 ; Turn off carousel extend solenoid
+    M64 P1 ; Turn on carousel retract solenoid
+    M66 P0 L3 Q4 ; check carousel retracted sensor
     o192 if [#5399 LT 0]
-        M65 P1 ; turn off the solenoid to send atc home
-        (abort, Failed to send carousel home) ; abort if the sensor does not activate in 5 seconds
+        M65 P1 ; turn off carousel retract solenoid
+        (abort, Failed to retract carousel) ; abort if the sensor does not activate in 5 seconds
     o192 endif
     M65 P1
 o190 endif

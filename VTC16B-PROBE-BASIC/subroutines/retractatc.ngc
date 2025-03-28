@@ -3,7 +3,7 @@ o<retractatc> sub
 M65 P0 ; Turn off carousel extend solenoid
 M64 P1 ; Turn on carousel retract solenoid
 
-M66 P0 L3 Q5 ; check carousel in position sensor
+M66 P0 L3 Q5 ; check carousel retracted sensor
 o100 if [#5399 LT 0]
     M65 P1 ; turn off carousel retract solenoid
     (abort, Failed to send carousel home) ; abort if the sensor does not activate in 5 seconds
