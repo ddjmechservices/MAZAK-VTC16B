@@ -113,7 +113,9 @@ o190 if [#<selected_tool> GT 0] ; selected tool is not tool0
     #3991 = #<selected_tool> ; Set persistent variable to remember tool in spindle after power cycle
 o190 else
     M65 P5 ; turn off tool unclamp solenoid
-    M64 P2 ; turn on tool clamp solenoidr
+    M64 P2 ; turn on tool clamp solenoid
+    G4 P.5 ;dwell
+    M65 P2 ; turn off tool clamp solenoid
     M65 P0 ; Turn off carousel extend solenoid
     M64 P1 ; Turn on carousel retract solenoid
     M66 P0 L3 Q4 ; check carousel retracted sensor

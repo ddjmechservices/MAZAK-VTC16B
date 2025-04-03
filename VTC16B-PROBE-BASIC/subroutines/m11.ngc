@@ -40,6 +40,9 @@ o130 do
     #<steps_to_move> = [#<steps_to_move>-1]
 o130 while [#<steps_to_move> GT 0]
 
+M64 P6 ;brake on
+G4 P.1 ;dwell
+M65 P6 ;brake off
 M65 P4 ; Stop motor
 
 #<_my_current_pocket> = #3990

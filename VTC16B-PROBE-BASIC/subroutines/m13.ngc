@@ -8,6 +8,8 @@ o<m13> sub
 
 (DEBUG, EVAL[vcp.getWidget{"dynatc"}.atc_message{"REFERENCING"}])
 
+M65 P6 ; Brake off
+G4  P.001 ;dwell
 M64 P4 ; Move Motor FWD
 M66 P4 L1 Q20 ; wait for rising edge on home index
 o100 if [#5399 LT 0]
@@ -16,6 +18,9 @@ o100 if [#5399 LT 0]
 o100 endif
 
 #3990 = 1
+M64 P6 ;brake on
+G4 P.1 ;dwell
+M65 P6 ;brake off
 M65 P4 ; Stop motor
 #3989 = 1
 

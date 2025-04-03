@@ -17,13 +17,14 @@ o110 endif
 
 ;M19 R0 Q2
 M24
-;M19 R0 Q1
+M19 R0 Q3
 ;G90
 G0 G53 Z#<atc_z_tool_change_height> ; rapid move to above the tool change height
-M65 P5 ; turn off drawbar unclamp solenoid
-M64 P2 ; Turn on drawbar clamp solenoid
-
-M5
+M65 P5 ; turn off tool unclamp solenoid
+M64 P2 ; turn on tool clamp solenoid
+G4 P.5 ;dwell
+M65 P2 ; turn off tool clamp solenoid
+M5 ; stop spindle
 M66 P5 L3 Q1 ; check the tool clamped sensor
 o120 if [#5399 LT 0]
     (abort, Failed to reclamp tool)
