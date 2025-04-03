@@ -1,5 +1,14 @@
 o<unclamptool> sub
 
+; First check if spindle is oriented
+M66 P6 L3 Q0.1 ; Check spindle orientation sensor (we connected to motion.digital-in-06)
+o110 if [#5399 EQ 0]
+    (msg, SAFETY WARNING: Orient spindle before releasing tool)
+    (debug, SAFETY WARNING: Orient spindle before releasing tool)
+    o<unclamptool> return [-1]
+o110 endif
+
+; If orientation is confirmed, proceed with unclamping
 M65 P2 ; turn off tool clamp solenoid
 M64 P5 ; turn on tool unclamp solenoid
 

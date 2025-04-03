@@ -32,3 +32,4 @@ net carousel-retracted          motion.digital-in-00        X03-mag1-retracted
 net carousel-extended           motion.digital-in-01        X02-mag1-extended
 net drawbar-unclamped           motion.digital-in-02        X11-tool-unclamped
 net drawbar-clamped             motion.digital-in-05        X10-tool-clamped
+net s-oriented                  motion.digital-in-06        
