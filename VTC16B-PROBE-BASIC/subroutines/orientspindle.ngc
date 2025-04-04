@@ -14,7 +14,7 @@ o100 if [#5399 EQ 0]
     o<orientspindle> return [0]
 o100 endif
 
-(msg, Spindle orientation complete)
+;(msg, Spindle orientation complete)
 o<orientspindle> endsub [1]
 
 M2
