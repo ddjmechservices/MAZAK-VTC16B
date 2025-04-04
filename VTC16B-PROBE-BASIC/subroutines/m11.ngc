@@ -28,10 +28,12 @@ o120 endif
 (tells the atc widget how many steps to move and start moving forward)
 (DEBUG, EVAL[vcp.getWidget{"dynatc"}.rotate{#<steps_to_move>, "cw"}])
 
+M65 P6 ; Brake off
+G4  P.05 ;dwell
 M64 P4 ; Move atc motor FWD
 
 o130 do
-    M66 P4 L1 Q3 ; wait for rising edge on rotation index
+    M66 P4 L3 Q3 ; wait for position sensor to go high
     o131 if [#5399 LT 0]
         M65 P4 ; Stop atc motor
         (abort, Failed to get rotation index)
@@ -41,7 +43,7 @@ o130 do
 o130 while [#<steps_to_move> GT 0]
 
 M64 P6 ;brake on
-G4 P.1 ;dwell
+G4 P.2 ;dwell
 M65 P6 ;brake off
 M65 P4 ; Stop motor
 

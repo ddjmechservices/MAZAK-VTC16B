@@ -9,10 +9,10 @@ o<m13> sub
 (DEBUG, EVAL[vcp.getWidget{"dynatc"}.atc_message{"REFERENCING"}])
 
 M65 P6 ; Brake off
-G4  P.005 ;dwell
+G4  P.05 ;dwell
 M64 P4 ; Move Motor FWD
 ;G4 P.001 ;dwell
-M66 P4 L3 Q30 ; wait for index sensor to go high
+M66 P3 L3 Q30 ; wait for index sensor to go high
 o100 if [#5399 LT 0]
     M65 P4 ; stop motor
     (abort, Failed to home carousel)
@@ -21,7 +21,7 @@ o100 endif
 #3990 = 1
 G4 P.001 ;dwell
 M64 P6 ;brake on
-G4 P.1 ;dwell
+G4 P.2 ;dwell
 M65 P6 ;brake off
 M65 P4 ; Stop motor
 #3989 = 1

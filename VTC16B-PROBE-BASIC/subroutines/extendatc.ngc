@@ -1,8 +1,12 @@
 o<extendatc> sub
 
-; #<atc_z_tool_change_height> is the height you spindle needs to be at to clamp/unclamp a tool form the ATC (Set via INI [ATC]Z_TOOL_CHANGE_HEIGHT)
-; #<atc_z_tool_clearance_height> is the clearance height you spindle needs to be at to safely clear the ATC (Set via INI [ATC]Z_TOOL_CLEARANCE_HEIGHT)
+; #<atc_z_tool_change_height> is the height your spindle needs to be at to clamp/unclamp a tool from the ATC (Set via INI [ATC]Z_TOOL_CHANGE_HEIGHT)
+; #<atc_z_tool_clearance_height> is the clearance height your spindle needs to be at to safely clear the ATC (Set via INI [ATC]Z_TOOL_CLEARANCE_HEIGHT)
+; #<atc_x_tool_clearance_pos> is the X clearance position to safely extend/retract the ATC (Set via INI [ATC]X_TOOL_CLEARANCE_POS)
+; #<atc_y_tool_clearance_pos> is the Y clearance position to safely extend/retract the ATC (Set via INI [ATC]Y_TOOL_CLEARANCE_POS)
+(PRINT, o<extendatc> - Extending ATC)
 
+; Load Z parameters from INI
 #<atc_z_tool_change_height> = -3.9000
 o100 if [EXISTS[#<_ini[atc]z_tool_change_height>]]
     #<atc_z_tool_change_height> = #<_ini[atc]z_tool_change_height>
@@ -12,16 +16,34 @@ o110 if [EXISTS[#<_ini[atc]z_tool_clearance_height>]]
     #<atc_z_tool_clearance_height> = #<_ini[atc]z_tool_clearance_height>
 o110 endif
 
-G0 G53 Z#<atc_z_tool_clearance_height> ; move z to clear height
+; Load X clearance parameter from INI
+#<atc_x_tool_clearance_pos> = -20.0000
+o120 if [EXISTS[#<_ini[atc]x_tool_clearance_pos>]]
+    #<atc_x_tool_clearance_pos> = #<_ini[atc]x_tool_clearance_pos>
+o120 endif
 
+; Load Y clearance parameter from INI
+#<atc_y_tool_clearance_pos> = -10.0000
+o130 if [EXISTS[#<_ini[atc]y_tool_clearance_pos>]]
+    #<atc_y_tool_clearance_pos> = #<_ini[atc]y_tool_clearance_pos>
+o130 endif
+
+; First move Z to clearance height for safety
+G0 G53 Z#<atc_z_tool_clearance_height>
+
+; Then move to X,Y clearance position
+G0 G53 X#<atc_x_tool_clearance_pos> Y#<atc_y_tool_clearance_pos>
+
+; Extend the ATC
 M65 P1 ; Turn off carousel retract solenoid
 M64 P0 ; Turn on carousel extend solenoid
 M66 P1 L3 Q5 ; check for carousel out position sensor
-o120 if [#5399 LT 0]
+o140 if [#5399 LT 0]
     M65 P0 ; switch off atc out solenoid
     (abort, ATC not in position)
-o120 endif
+o140 endif
 
+(PRINT, o<extendatc> - ATC extended successfully)
 o<extendatc> endsub [1]
 
 M2
