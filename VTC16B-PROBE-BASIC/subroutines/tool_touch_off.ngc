@@ -40,87 +40,80 @@ o<tool_touch_off> sub
   G49
 
   G90    (set absolute coordinates)
-  G53 G1 F[#<traverse_fr>] Z0    (move to z0 home position)
-  G53 G1 F[#<traverse_fr>] X#<tool_touch_x_coords> Y#<tool_touch_y_coords>
+  G53 G1 F[ABS[#<traverse_fr>]] Z0    (move to z0 home position)
+  G53 G1 F[ABS[#<traverse_fr>]] X#<tool_touch_x_coords> Y#<tool_touch_y_coords>
   
   (Current Z Position including offsets in current program units)
   #<z> = #5422
 
   (PRINT, Moving to toolsetter position and beginning measurement)
 
-  (Initial Fast Z- Probe until decel sensor activates)
-  G91
-  F[#<probe_fast_fr>]
-  
-  (Check decel sensor status first)
-  M66 P8 L0   (Read X08 toolsetter-decel input)
+  (Check if measurement sensor is already triggered before starting)
+  M66 P8 L0  (Read X09 toolsetter-measure input)
   o115 if [#5399 EQ 1]
+    (PRINT, Error: Measure sensor already triggered, aborting)
+    G90
+    G53 G1 F[ABS[#<traverse_fr>]] Z0
+    M50 P1
+    o<tool_touch_off> return
+  o115 endif
+
+  (Check decel sensor status first)
+  M66 P7 L0  (Read X08 toolsetter-decel input)
+  o120 if [#5399 EQ 1]
     (PRINT, Warning: Decel sensor already activated, check tool length)
     G90
-    G1 F[#<traverse_fr>] Z[#<z> + 0.5]
-  o115 endif
-  
-  (Move down until decel sensor activates)
-  M66 P8 L3 Q[#<max_z_distance>]  (Wait for decel sensor with timeout)
-  #<decel_sensor_status> = #5399
-  
-  o120 if [#<decel_sensor_status> LT 0]
-    (PRINT, Failed to detect decel sensor, aborting)
-    G90
-    G1 F[#<traverse_fr>] Z#<z>
-    F[#<probe_fast_fr>]
+    G1 F[ABS[#<traverse_fr>]] Z[#<z> + 0.5]
     M50 P1
     o<tool_touch_off> return
   o120 endif
   
-  (PRINT, Decel sensor activated, continuing at slow speed)
+  (SIMPLIFIED APPROACH: Move at fast speed while monitoring decel sensor)
+  G91    (Incremental mode)
+  #<current_z> = 0
+  #<decel_found> = 0
   
-  (Record decel sensor position)
-  #<decel_triggered_pos> = #5063
+  (Use a loop to incrementally move DOWN while checking decel sensor)
+  o200 while [#<current_z> LT #<max_z_distance> AND #<decel_found> EQ 0]
+    G1 Z-0.1 F[ABS[#<probe_fast_fr>]]  (Move DOWN in small steps)
+    #<current_z> = [#<current_z> + 0.1]
+    M66 P7 L0  (Check decel sensor)
+    o210 if [#5399 EQ 1]
+      #<decel_found> = 1
+      #<decel_z> = #5053  (Current Z position)
+      (PRINT, Decel sensor activated at Z=#<decel_z>)
+    o210 endif
+  o200 endwhile
   
-  (Switch to slow feed rate and continue)
-  F[#<probe_slow_fr>]
-  
-  (Move down until measure sensor activates)
-  M66 P9 L3 Q[#<toolsetter_decel_distance> * 2]  (Wait for measure sensor with timeout)
-  #<measure_sensor_status> = #5399
-  
-  o130 if [#<measure_sensor_status> LT 0]
-    (PRINT, Failed to detect measure sensor, aborting)
+  o220 if [#<decel_found> EQ 0]
+    (PRINT, Failed to detect decel sensor, aborting)
     G90
-    G1 F[#<traverse_fr>] Z#<z>
-    F[#<probe_fast_fr>]
+    G1 F[ABS[#<traverse_fr>]] Z#<z>
     M50 P1
     o<tool_touch_off> return
-  o130 endif
+  o220 endif
+  
+  (Slow down after decel sensor detected - no overtravel, just precision measurement)
+  F[ABS[#<probe_slow_fr>]]
+  
+  (Now use G38.2 to precisely measure with the measurement sensor)
+  G38.2 Z-[#<toolsetter_decel_distance> * 1.5]
+  
+  o230 if [#5070 EQ 0]
+    (PRINT, Precision probe failed to touch off)
+    G90
+    G1 F[ABS[#<traverse_fr>]] Z#<z>
+    M50 P1
+    o<tool_touch_off> return
+  o230 endif
   
   (Record the position when measure sensor activated)
   #<z_minus_probed> = #5063
+  (PRINT, Measure sensor activated at Z=#<z_minus_probed>)
   
-  (Move to z_clearance height for confirmation probe)
+  (SIMPLIFIED: Retract directly without confirmation probe)
   G90
-  G1 F[#<traverse_fr>] Z[#<z_minus_probed> + #<z_clearance>]
-
-  (Confirmation probe at slow speed)
-  G91
-  F[#<probe_slow_fr>]
-  
-  (Move down until measure sensor activates again)
-  M66 P9 L3 Q[#<z_clearance> * 2]  (Wait for measure sensor with timeout)
-  
-  o140 if [#5399 LT 0]
-    (PRINT, Failed confirmation probe, using initial measurement)
-  o140 else
-    #<z_minus_confirmed> = #5063
-    #<measure_diff> = [ABS[#<z_minus_probed> - #<z_minus_confirmed>]]
-    
-    o145 if [#<measure_diff> GT #<toolsetter_tolerance>]
-      (PRINT, Warning: Confirmation measurement differs by #<measure_diff>)
-    o145 else
-      #<z_minus_probed> = #<z_minus_confirmed>
-      (PRINT, Confirmation measurement successful)
-    o145 endif
-  o140 endif
+  G1 F[ABS[#<traverse_fr>]] Z[#<z_minus_probed> + #<z_clearance>]
 
   (Calculate tool length)
   #<tool_length> = [#<spindle_zero_height> - #<z_minus_probed>]
@@ -133,13 +126,13 @@ o<tool_touch_off> sub
   G43 (use tool length compensation)
   
   (Move to safe height for ATC)
-  o150 if [EXISTS[#<_ini[atc]z_tool_change_height>]]
+  o250 if [EXISTS[#<_ini[atc]z_tool_change_height>]]
     G90
-    G53 G1 F[#<traverse_fr>] Z[#<_ini[atc]z_tool_change_height>]
-  o150 else
+    G53 G1 F[ABS[#<traverse_fr>]] Z[#<_ini[atc]z_tool_change_height>]
+  o250 else
     G90
-    G53 G1 F[#<traverse_fr>] Z0
-  o150 endif
+    G53 G1 F[ABS[#<traverse_fr>]] Z0
+  o250 endif
 
   (Reinstate Feedrate Override)
   M50 P1

@@ -17,7 +17,7 @@ net s-vel-fb                             <= nyx.0.servo-05.vel-fb
 net s-vel-fb-rps spindle.0.speed-in      <= nyx.0.servo-05.vel-fb-rps
 net s-at-speed   spindle.0.at-speed      <= nyx.0.servo-05.at-speed
 net s-orient                             => nyx.0.servo-05.spindle-orient
-net s-oriented   spindle.0.is-oriented   <= nyx.0.servo-05.spindle-oriented
+net s-oriented   spindle.0.is-oriented   <= nyx.0.servo-05.spindle-oriented motion.digital-in-06
 
 loadrt mdssp
 addf mdssp.0 servo-thread
@@ -28,5 +28,7 @@ net s-revs     spindle.0.revs          <= mdssp.0.revs
 net s-orient                           <= mdssp.0.orient-out
 net s-orient-orient   spindle.0.orient => mdssp.0.spindle-orient-in
 net s-orient-locked   spindle.0.locked => mdssp.0.spindle-locked-in
+
+newsig s-oriented bit
 
 #net spindle-oriented spindle.0.is-oriented => motion.digital-in-06

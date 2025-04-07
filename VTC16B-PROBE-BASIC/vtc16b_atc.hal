@@ -4,12 +4,6 @@ addf carousel.0 servo-thread
 addf conv-float-s32.0 servo-thread
 addf conv-float-s32.1 servo-thread
 #addf conv-float-s32.2 servo-thread # G-code analogue outputs are float-type
-loadrt mux2 count=1
-addf mux2.0 servo-thread
-
-# Fix for spindle.0.is-oriented signal conflict
-unlinkp spindle.0.is-oriented
-net spindle-orientation-status spindle.0.is-oriented => motion.digital-in-06
 
 net car-enable carousel.0.enable
 net car-ready carousel.0.ready
@@ -38,23 +32,18 @@ net carousel-retracted          motion.digital-in-00        X03-mag1-retracted
 net carousel-extended           motion.digital-in-01        X02-mag1-extended
 net drawbar-unclamped           motion.digital-in-02        X11-tool-unclamped
 net drawbar-clamped             motion.digital-in-05        X10-tool-clamped
-net s-oriented                  motion.digital-in-06        
-net toolsetter-decel            motion.digital-in-07        X08-toolsetter-decel
-net toolsetter-measure          motion.digital-in-08        X09-toolsetter-measure
+net s-oriented                  motion.digital-in-06
+net toolsetter-decel-bit        motion.digital-in-07        X08-toolsetter-decel
+net toolsetter-measure-bit      motion.digital-in-08        X09-toolsetter-measure
 
-net toolsetter-decel            motion.probe-input
-net toolsetter-decel            mux2.0.in0
-net toolsetter-measure          mux2.0.in1
-net probe-type motion.probe-type => mux2.0.sel
-net toolsetter-active           mux2.0.out                   motion.probe-input
+# Connect ONLY the MEASURE sensor to motion.probe-input
+# Use the decel sensor via M66 to trigger feed rate change
+net toolsetter-measure-bit => motion.probe-input
 
 # Toolsetter HAL configuration for Mazak VTC16B
 # --------------------------------------------------
-
-# Connect toolsetter inputs from hardware to motion controller
-# X08 = Toolsetter decel input (first contact)
-# X09 = Toolsetter measure input (final measurement point)
-
+# X08 = Toolsetter decel input (first contact) - monitored via M66 P7
+# X09 = Toolsetter measure input (final measurement) - connected to motion.probe-input
 # Connect the decel input to motion.probe-input
 #net toolsetter-decel <= your-input-device.pin-for-X08 => motion.digital-in-08
 # For G38.3 probe mode (deceleration sensor)
