@@ -9,8 +9,8 @@
 # -not = inverted pin
 #alias pin, nyx.x.yxx-00.xx-00=physical input on YI32/YO32
 #X00, X01, etc = alias pin name
-alias pin nyx.0.yio-00.in-00     X08
-alias pin nyx.0.yio-00.in-01     X09
+alias pin nyx.0.yio-00.in-00     X08-toolsetter-decel
+alias pin nyx.0.yio-00.in-01     X09-toolsetter-measure
 alias pin nyx.0.yio-00.in-02     X0C-mms-battery-alarm
 alias pin nyx.0.yio-00.in-03     X0F-emg-stop-in-2
 alias pin nyx.0.yio-00.in-04     X02-mag1-extended

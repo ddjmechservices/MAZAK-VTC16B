@@ -1,0 +1,109 @@
+o<m199> sub
+  (Author: Toolsetter Calibration)
+  (Version: 1.0)
+  (Date: 04/08/25)
+  
+  (Calibration routine for Mazak-style toolsetter with dual sensors)
+  (X08-toolsetter-decel: Input to slow down Z axis)
+  (X09-toolsetter-measure: Final measurement input)
+  (Uses probe_basic standard parameters)
+  
+  (Load current toolsetter parameters)
+  #<tool_setter_height> = #5183
+  #<tool_touch_x_coords> = #5181
+  #<tool_touch_y_coords> = #5182
+  #<decel_distance> = 0.15748
+  #<tolerance> = 0.07874
+  
+  o100 if [EXISTS[#<_ini[probe]toolsetter_decel_distance>]]
+    #<decel_distance> = #<_ini[probe]toolsetter_decel_distance>
+  o100 endif
+  
+  o110 if [EXISTS[#<_ini[probe]toolsetter_tolerance>]]
+    #<tolerance> = #<_ini[probe]toolsetter_tolerance>
+  o110 endif
+  
+  (PRINT, Mazak-style toolsetter calibration procedure starting)
+  (PRINT, Current toolsetter height: #<tool_setter_height>)
+  (PRINT, Current decel distance: #<decel_distance>)
+  
+  (Ensure machine is homed)
+  o140 if [#5397 NE 1]
+    (PRINT, Machine must be homed before calibration)
+    o<m199> return
+  o140 endif
+  
+  (PRINT, Insert reference tool with KNOWN length)
+  (PRINT, Enter known tool length value as #1 in MDI when prompted)
+  M0
+  
+  #<ref_tool_length> = #1
+  (PRINT, Using reference tool length: #<ref_tool_length>)
+  
+  (Move to toolsetter position)
+  G90
+  G53 G1 F20 Z0    (move to z0 home position)
+  G53 G1 F20 X#<tool_touch_x_coords> Y#<tool_touch_y_coords>
+  
+  (PRINT, Testing toolsetter deceleration sensor (X08))
+  (PRINT, Jogging Z down slowly until decel sensor triggers)
+  (PRINT, Press RESUME when ready to start jog)
+  M0
+  
+  (Check the deceleration sensor status)
+  M66 P8 L0   (Read X08 toolsetter-decel input)
+  #<decel_status> = #5399
+  
+  o150 if [#<decel_status> EQ 1]
+    (PRINT, WARNING: Decel sensor already triggered! Adjust Z position upward)
+    (PRINT, and press RESUME to try again)
+    M0
+    M66 P8 L0
+    #<decel_status> = #5399
+    
+    o151 if [#<decel_status> EQ 1]
+      (PRINT, Decel sensor still triggered. Aborting calibration)
+      o<m199> return
+    o151 endif
+  o150 endif
+  
+  (PRINT, Jog Z downward slowly until decel sensor triggers)
+  (PRINT, Press RESUME after decel sensor has triggered)
+  M0
+  
+  (Read current position at decel sensor trigger)
+  #<decel_z> = #5063
+  
+  (PRINT, Decel sensor triggered at Z: #<decel_z>)
+  (PRINT, Now continue jogging Z downward until measure sensor triggers)
+  (PRINT, Press RESUME after measure sensor has triggered)
+  M0
+  
+  (Read current position at measure sensor trigger)
+  #<measure_z> = #5063
+  
+  (PRINT, Measure sensor triggered at Z: #<measure_z>)
+  
+  (Calculate the actual toolsetter height and decel distance)
+  #<new_height> = [#<measure_z> + #<ref_tool_length>]
+  #<new_decel_distance> = [ABS[#<decel_z> - #<measure_z>]]
+  
+  (PRINT, ----- CALIBRATION RESULTS -----)
+  (PRINT, New toolsetter height: #<new_height>)
+  (PRINT, New deceleration distance: #<new_decel_distance>)
+  (PRINT, Update your INI file with:)
+  (PRINT, TOOLSETTER_HEIGHT = #<new_height>)
+  (PRINT, TOOLSETTER_DECEL_DISTANCE = #<new_decel_distance>)
+  
+  (Update global parameter)
+  #5183 = #<new_height>
+  
+  (PRINT, Updated global parameter for toolsetter height)
+  (PRINT, Remember to update your INI file for persistence)
+  
+  (Move back to safe height)
+  G53 G1 F20 Z0
+  
+o<m199> endsub [1]
+
+M2

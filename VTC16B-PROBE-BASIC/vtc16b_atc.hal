@@ -4,6 +4,12 @@ addf carousel.0 servo-thread
 addf conv-float-s32.0 servo-thread
 addf conv-float-s32.1 servo-thread
 #addf conv-float-s32.2 servo-thread # G-code analogue outputs are float-type
+loadrt mux2 count=1
+addf mux2.0 servo-thread
+
+# Fix for spindle.0.is-oriented signal conflict
+unlinkp spindle.0.is-oriented
+net spindle-orientation-status spindle.0.is-oriented => motion.digital-in-06
 
 net car-enable carousel.0.enable
 net car-ready carousel.0.ready
@@ -33,3 +39,40 @@ net carousel-extended           motion.digital-in-01        X02-mag1-extended
 net drawbar-unclamped           motion.digital-in-02        X11-tool-unclamped
 net drawbar-clamped             motion.digital-in-05        X10-tool-clamped
 net s-oriented                  motion.digital-in-06        
+net toolsetter-decel            motion.digital-in-07        X08-toolsetter-decel
+net toolsetter-measure          motion.digital-in-08        X09-toolsetter-measure
+
+net toolsetter-decel            motion.probe-input
+net toolsetter-decel            mux2.0.in0
+net toolsetter-measure          mux2.0.in1
+net probe-type motion.probe-type => mux2.0.sel
+net toolsetter-active           mux2.0.out                   motion.probe-input
+
+# Toolsetter HAL configuration for Mazak VTC16B
+# --------------------------------------------------
+
+# Connect toolsetter inputs from hardware to motion controller
+# X08 = Toolsetter decel input (first contact)
+# X09 = Toolsetter measure input (final measurement point)
+
+# Connect the decel input to motion.probe-input
+#net toolsetter-decel <= your-input-device.pin-for-X08 => motion.digital-in-08
+# For G38.3 probe mode (deceleration sensor)
+#net toolsetter-decel => motion.probe-input
+
+# Connect the measure input to motion.probe-input for G38.2
+# Add a mux2 component to switch between decel and measure inputs
+#loadrt mux2 count=1
+#addf mux2.0 servo-thread
+
+# Route the control signals
+#net toolsetter-decel => mux2.0.in0
+#net toolsetter-measure <= your-input-device.pin-for-X09 => motion.digital-in-09
+#net toolsetter-measure => mux2.0.in1
+
+# Control signal to switch between decel and measure modes
+# Changes when G38.3 vs G38.2 is used
+#net probe-type motion.probe-type => mux2.0.sel
+
+# Connect mux2 output to probe-input
+#net toolsetter-active mux2.0.out => motion.probe-input
