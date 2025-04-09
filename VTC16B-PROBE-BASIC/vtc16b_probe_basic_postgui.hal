@@ -22,4 +22,8 @@ net tool-number             =>  qtpyvcp_manualtoolchange.number
 net probe-in  <=  qtpyvcp.probe-led.on
 
 # *** Set line below for actual spindle readout from your hal file ***
-# net spindle-rpm-filtered scale_to_rpm.out  =>  qtpyvcp.spindle-encoder-rpm.in
+loadrt scale names=spindle_rpm_scale
+addf spindle_rpm_scale servo-thread
+setp spindle_rpm_scale.gain 60.0
+net s-vel-fb-rps => spindle_rpm_scale.in
+net spindle-rpm-filtered spindle_rpm_scale.out => qtpyvcp.spindle-encoder-rpm.in

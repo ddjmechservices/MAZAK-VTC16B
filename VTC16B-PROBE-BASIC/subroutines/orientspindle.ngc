@@ -2,19 +2,62 @@ o<orientspindle> sub
 
 ; First ensure spindle is stopped
 M5
+G4 P0.25  ; Dwell for 0.5 seconds to ensure spindle has stopped
 
-; Orient the spindle
+; ----- TOOL CLAMP STATUS CHECK AND CLAMPING -----
+; Debug message to help track execution
+(debug, Checking tool clamp status...)
+
+; SAFETY CHECK: Verify tool is clamped before orientation
+M66 P5 L0 ; Read tool clamp status
+(debug, Initial clamp status reading: #5399)
+
+o110 if [#5399 EQ 0]
+    (msg, Tool not clamped. Activating clamp routine.)
+    (debug, Calling clamptool subroutine...)
+    
+    ; Force tool clamp - with explicit error checking
+    o<clamptool> call
+    
+    ; Dwell to ensure clamp operation completes
+    G4 P1.0
+    
+    ; Re-check clamp status after attempting to clamp
+    M66 P5 L0
+    (debug, Clamp status after clamptool: #5399)
+    
+    ; Verify clamp was successful
+    o115 if [#5399 EQ 0]
+        (msg, ERROR: Failed to clamp tool. Aborting spindle orientation.)
+        (debug, Tool clamp failure - orientation aborted)
+        o<orientspindle> return [0]
+    o115 endif
+    
+    (debug, Tool clamp successful)
+o110 endif
+
+; ----- SECONDARY VERIFICATION -----
+; Double-check tool is clamped regardless of first check
+M66 P5 L0
+o120 if [#5399 EQ 0]
+    (msg, ERROR: Tool is still not clamped. Cannot orient spindle safely.)
+    (debug, Secondary clamp check failed - aborting)
+    o<orientspindle> return [0]
+o120 endif
+
+; ----- SPINDLE ORIENTATION -----
+(debug, Tool confirmed clamped, proceeding with spindle orientation)
 M19 R0 ; Orient spindle to 0 degrees
 
 ; Wait for orientation to complete
 M66 P6 L3 Q3 ; Wait up to 3 seconds for spindle orientation
-o100 if [#5399 EQ 0]
-    (msg, Spindle orientation failed)
-    (debug, Spindle orientation failed)
+o130 if [#5399 EQ 0]
+    (msg, ERROR: Spindle orientation failed)
+    (debug, Spindle orientation timeout)
     o<orientspindle> return [0]
-o100 endif
+o130 endif
 
-;(msg, Spindle orientation complete)
+(debug, Spindle orientation complete)
 o<orientspindle> endsub [1]
 
 M2

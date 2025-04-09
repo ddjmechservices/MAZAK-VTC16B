@@ -1,22 +1,39 @@
 o<unclamptool> sub
 
 ; First check if spindle is oriented
-M66 P6 L3 Q0.1 ; Check spindle orientation sensor (we connected to motion.digital-in-06)
+M66 P6 L0 ; Check spindle orientation sensor (immediate read, no waiting)
 o110 if [#5399 EQ 0]
-    (msg, SAFETY WARNING: Orient spindle before releasing tool)
-    (debug, SAFETY WARNING: Orient spindle before releasing tool)
+    (msg, ERROR: Spindle must be oriented before releasing tool)
+    (debug, SAFETY ERROR: Spindle not oriented. Tool release aborted.)
     o<unclamptool> return [-1]
 o110 endif
 
+; Double check - make extra sure spindle is oriented
+(debug, Spindle orientation detected, confirming stability...)
+G4 P0.2 ; Small dwell to ensure signal is stable
+M66 P6 L0 ; Check again
+o115 if [#5399 EQ 0]
+    (msg, ERROR: Unstable spindle orientation detected)
+    (debug, SAFETY ERROR: Unstable orientation. Tool release aborted.)
+    o<unclamptool> return [-1]
+o115 endif
+
 ; If orientation is confirmed, proceed with unclamping
+(debug, Spindle orientation confirmed. Proceeding with tool release.)
 M65 P2 ; turn off tool clamp solenoid
 M64 P5 ; turn on tool unclamp solenoid
 
+; Wait for unclamped confirmation
 M66 P2 L3 Q2 ; check the unclamped tool sensor
-o100 if [#5399 LT 0]
-    (abort, Failed to release tool) ; abort if the sensor does not activate in 2 seconds
-o100 endif
+o120 if [#5399 LT 0]
+    (msg, ERROR: Failed to release tool)
+    (debug, Timeout waiting for tool unclamp sensor)
+    M65 P5 ; turn off unclamp solenoid
+    M64 P2 ; restore clamp solenoid (safety)
+    o<unclamptool> return [-1]
+o120 endif
 
+(debug, Tool successfully unclamped)
 o<unclamptool> endsub [1]
 
 M2
