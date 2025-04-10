@@ -46,7 +46,11 @@ G0 G53 X#<atc_x_tool_change_pos> Y#<atc_y_tool_change_pos>
 ; Then move Z to tool change height
 G0 G53 Z#<atc_z_tool_change_height> ; move to tool change height
 
-M19 R0 Q3 ; orient spindle
+o<orientspindle> call
+o135 if [#5399 EQ 0]
+    (msg, Spindle orientation failed, aborting tool unload)
+    o<m21> return [0]
+o135 endif
 
 M64 P0 ; Turn on carousel extend solenoid
 M66 P1 L3 Q5 ; check for carousel extended sensor

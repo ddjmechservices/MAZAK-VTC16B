@@ -1,13 +1,40 @@
 o<m24> sub
 (PRINT, o<m24>)
 
-M65 P2 ; turn off drawbar clamp solenoid
-M64 P5 ; Turn on drawbar unclamp solenoid
+; First check if spindle is oriented
+M66 P6 L0 ; Check spindle orientation sensor (immediate read, no waiting)
+o110 if [#5399 EQ 0]
+    (msg, ERROR: Spindle must be oriented before releasing tool)
+    (debug, SAFETY ERROR: Spindle not oriented. Tool release aborted.)
+    o<m24> return [-1]
+o110 endif
+
+; Double check - make extra sure spindle is oriented
+;(debug, Spindle orientation detected, confirming stability...)
+G4 P0.2 ; Small dwell to ensure signal is stable
+M66 P6 L0 ; Check again
+o115 if [#5399 EQ 0]
+    (msg, ERROR: Unstable spindle orientation detected)
+    (debug, SAFETY ERROR: Unstable orientation. Tool release aborted.)
+    o<m24> return [-1]
+o115 endif
+
+; If orientation is confirmed, proceed with unclamping
+;(debug, Spindle orientation confirmed. Proceeding with tool release.)
+M65 P2 ; turn off tool clamp solenoid
+M64 P5 ; turn on tool unclamp solenoid
+
+; Wait for unclamped confirmation
 M66 P2 L3 Q2 ; check the unclamped tool sensor
-o100 if [#5399 LT 0]
-    M65 P2 ; turn off the drawbar
-    (abort, failed to release tool) ; abort if the sensor does not activate in 3 seconds
-o100 endif
+o120 if [#5399 LT 0]
+    (msg, ERROR: Failed to release tool)
+    (debug, Timeout waiting for tool unclamp sensor)
+    M65 P5 ; turn off unclamp solenoid
+    M64 P2 ; restore clamp solenoid (safety)
+    o<m24> return [-1]
+o120 endif
+
+;(debug, Tool successfully unclamped)
 
 (PRINT, o<m24> endsub)
 o<m24> endsub [1]

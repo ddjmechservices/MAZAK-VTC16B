@@ -9,7 +9,7 @@ o110 if [#5399 EQ 0]
 o110 endif
 
 ; Double check - make extra sure spindle is oriented
-(debug, Spindle orientation detected, confirming stability...)
+;(debug, Spindle orientation detected, confirming stability...)
 G4 P0.2 ; Small dwell to ensure signal is stable
 M66 P6 L0 ; Check again
 o115 if [#5399 EQ 0]
@@ -19,7 +19,7 @@ o115 if [#5399 EQ 0]
 o115 endif
 
 ; If orientation is confirmed, proceed with unclamping
-(debug, Spindle orientation confirmed. Proceeding with tool release.)
+;(debug, Spindle orientation confirmed. Proceeding with tool release.)
 M65 P2 ; turn off tool clamp solenoid
 M64 P5 ; turn on tool unclamp solenoid
 
@@ -33,7 +33,7 @@ o120 if [#5399 LT 0]
     o<unclamptool> return [-1]
 o120 endif
 
-(debug, Tool successfully unclamped)
+;(debug, Tool successfully unclamped)
 o<unclamptool> endsub [1]
 
 M2
