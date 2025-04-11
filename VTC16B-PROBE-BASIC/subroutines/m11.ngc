@@ -31,7 +31,7 @@ o120 endif
 M65 P6 ; Brake off
 G4  P.05 ;dwell
 M64 P4 ; Move atc motor FWD
-G4  P.1 ;dwell
+G4  P.3 ;dwell
 
 o130 do
     M66 P4 L3 Q3 ; wait for position sensor to go high

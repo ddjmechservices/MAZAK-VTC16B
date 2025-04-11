@@ -52,11 +52,20 @@ o<tool_touch_off> sub
   (Cancel Feedrate Override)
   M50 P0
 
-  G49
+  (Force consistent modes)
+  G40 (Cancel tool diameter compensation)
+  G49 (Cancel tool length compensation)
+  G80 (Cancel canned cycles)
+  G90 (Absolute distance mode)
+  G21 (Metric mode - if your machine uses metric)
 
-  G90    (set absolute coordinates)
-  G53 G1 F#<traverse_fr> Z0    (move to z0 home position)
-  G53 G1 F#<traverse_fr> X#<tool_touch_x_coords> Y#<tool_touch_y_coords>
+  (PRINT, Tool touch off sequence starting)
+  
+  (FIRST: Move Z to safe height to avoid collisions)
+  G53 G0 Z0    (move to machine Z0 position - RAPID)
+  
+  (THEN: Move to X,Y position above toolsetter - RAPID)
+  G53 G0 X#<tool_touch_x_coords> Y#<tool_touch_y_coords>
   
   (Current Z Position including offsets in current program units)
   #<start_z_pos> = #5422
@@ -67,27 +76,24 @@ o<tool_touch_off> sub
   M66 P8 L0  (Read X09 toolsetter-measure input)
   o115 if [#5399 EQ 1]
     (PRINT, Error: Measure sensor already triggered, aborting)
-    G90
-    G53 G1 F#<traverse_fr> Z0
+    G53 G0 Z0  (Return to Z home with rapid)
     M50 P1
-    o<tool_touch_off> return
+    o<tool_touch_off> return [1]
   o115 endif
 
   (Check decel sensor status first)
   M66 P7 L0  (Read X08 toolsetter-decel input)
   o120 if [#5399 EQ 1]
     (PRINT, Warning: Decel sensor already activated, check tool length)
-    G90
-    G1 F#<traverse_fr> Z[#<start_z_pos> + 0.5]
+    G90 G0 Z[#<start_z_pos> + 0.5]  (Move UP to clear)
     M50 P1
-    o<tool_touch_off> return
+    o<tool_touch_off> return [1]
   o120 endif
   
   (MAZAK APPROACH - TWO-STAGE PROBING WITH CORRECT DIRECTION)
   (First stage: find decel sensor with fast speed, monitoring with M66)
   
   G91 (Set incremental mode)
-  F#<probe_fast_fr>
   
   (Step with explicit moves while checking decel sensor)
   #<decel_found> = 0
@@ -107,22 +113,19 @@ o<tool_touch_off> sub
   
   o220 if [#<decel_found> EQ 0]
     (PRINT, Failed to detect decel sensor, aborting)
-    G90
-    G1 F#<traverse_fr> Z#<start_z_pos>
+    G90 G0 Z#<start_z_pos>  (Return to start Z position)
     M50 P1
-    o<tool_touch_off> return
+    o<tool_touch_off> return [1]
   o220 endif
   
   (SECOND STAGE - PRECISION MEASUREMENT)
-  F#<probe_slow_fr>  (Set slow feed rate)
-  G38.2 Z-[#<toolsetter_decel_distance> * 1.5]  (NEGATIVE for DOWN)
+  G38.2 Z-[#<toolsetter_decel_distance> * 1.5] F#<probe_slow_fr>  (NEGATIVE for DOWN)
   
   o230 if [#5070 EQ 0]
     (PRINT, Precision probe failed to touch off)
-    G90
-    G1 F#<traverse_fr> Z#<start_z_pos>
+    G90 G0 Z#<start_z_pos>  (Return to start Z position)
     M50 P1
-    o<tool_touch_off> return
+    o<tool_touch_off> return [1]
   o230 endif
   
   (Record the position when measure sensor activated)
@@ -130,8 +133,7 @@ o<tool_touch_off> sub
   (PRINT, Measure sensor activated at Z=#<z_minus_probed>)
   
   (Retract from the touch point)
-  G90
-  G1 F#<traverse_fr> Z[#<z_minus_probed> + #<z_clearance>]
+  G90 G0 Z[#<z_minus_probed> + #<z_clearance>]  (Move UP by clearance)
 
   (Calculate tool length)
   #<tool_length> = [#<spindle_zero_height> - #<z_minus_probed>]
@@ -145,11 +147,9 @@ o<tool_touch_off> sub
   
   (Move to safe height for ATC)
   o250 if [EXISTS[#<_ini[atc]z_tool_change_height>]]
-    G90
-    G53 G1 F#<traverse_fr> Z[#<_ini[atc]z_tool_change_height>]
+    G90 G53 G0 Z[#<_ini[atc]z_tool_change_height>]
   o250 else
-    G90
-    G53 G1 F#<traverse_fr> Z0
+    G90 G53 G0 Z0  (Move to Z0)
   o250 endif
 
   (Reinstate Feedrate Override)

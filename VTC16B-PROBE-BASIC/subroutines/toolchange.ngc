@@ -1,6 +1,6 @@
 (author: Chris P | Updated: AI Assistant)
-(version: 0.3)
-(date: 04/04/25)
+(version: 0.4)
+(date: 04/11/25)
 
 o<toolchange> sub
 
@@ -113,7 +113,11 @@ o220 if [#<tool_in_spindle> GT 0] ; checks if there is a valid tool in the spind
     G0 G53 Z#<atc_z_tool_change_height>
     
     M10 P[#<open_pocket>] ; move carousel to an open pocket
-    M21 ; puts the tool in spindle away into the open pocket
+    
+    ; Store tool with proper orientation
+    (debug, Storing tool T#<tool_in_spindle> in pocket #<open_pocket>)
+    M21 ; store tool
+    
     (DEBUG, EVAL[vcp.getWidget{"dynatc"}.store_tool{#<open_pocket>, #<tool_in_spindle>}])
     #140 = #<open_pocket>
     #[4000 + #140] = #<tool_in_spindle> ; save tool number in pocket
@@ -129,6 +133,8 @@ o230 if [#<selected_tool> GT 0] ; selected tool is not tool0
     ; Move to clearance position before carousel movement
     G0 G53 X#<atc_x_tool_clearance_pos> Y#<atc_y_tool_clearance_pos>
     
+    ; Position carousel and extend
+    (debug, Moving carousel to pocket #<next_pocket> for tool T#<selected_tool>)
     M10 P#<next_pocket> ; set the carousel to move to the right pocket for the selected tool
     M65 P1 ; Turn off carousel retract solenoid
     M64 P0 ; Turn on carousel extend solenoid
@@ -143,8 +149,37 @@ o230 if [#<selected_tool> GT 0] ; selected tool is not tool0
     G0 G53 X#<atc_x_tool_change_pos> Y#<atc_y_tool_change_pos>
     G0 G53 Z#<atc_z_tool_change_height>
 
+    ; Orient spindle before tool loading (ALWAYS required)
+    (debug, Orienting spindle before tool load)
+    M5 ; Ensure spindle is stopped
+    G4 P1.0 ; Dwell for spindle to stop completely
+    o<orientspindle> call
+    o235 if [#5399 EQ 0]
+        (msg, Spindle orientation failed, aborting tool load)
+        o<toolchange> return [0]
+    o235 endif
+    
+    ; Explicitly unclamp the drawbar (ALWAYS required before loading)
+    (debug, Unclamping drawbar before tool load)
+    M65 P2 ; turn off tool clamp solenoid
+    M64 P5 ; turn on tool unclamp solenoid
+    G4 P1.5 ; longer dwell to ensure unclamp completes
+    
+    ; Check that unclamp activated
+    M66 P2 L0 ; Check unclamp sensor
+    o237 if [#5399 EQ 0]
+        (debug, WARNING: Unclamp sensor not active - trying again)
+        M65 P2 ; ensure clamp is off
+        G4 P0.5 ; short dwell
+        M64 P5 ; ensure unclamp is on
+        G4 P1.0 ; longer dwell
+    o237 endif
+
     (DEBUG, EVAL[vcp.getWidget{"dynatc"}.store_tool{#<next_pocket>, 0}])
-    M22 ; Carousel out
+    
+    (debug, Loading tool T#<selected_tool> from pocket #<next_pocket>)
+    M22 ; Load Tool
+    
     #150 = #<next_pocket>
     #[4000 + #150] = 0 ; empty the pocket
     #3991 = #<selected_tool> ; Set persistent variable to remember tool in spindle after power cycle
@@ -153,9 +188,10 @@ o230 if [#<selected_tool> GT 0] ; selected tool is not tool0
     G0 G53 Z#<atc_z_tool_clearance_height>
 o230 else
     ; For tool 0 (no tool)
+    (debug, Special handling for T0 (empty spindle))
     M65 P5 ; turn off tool unclamp solenoid
     M64 P2 ; turn on tool clamp solenoid
-    G4 P.5 ;dwell
+    G4 P.5 ; dwell
     M65 P2 ; turn off tool clamp solenoid
     M65 P0 ; Turn off carousel extend solenoid
     M64 P1 ; Turn on carousel retract solenoid
