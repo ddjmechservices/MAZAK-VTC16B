@@ -1,249 +1,240 @@
 o<tool_touch_off> sub
   (author: Chris P & AI Assistant)
-  (version: 1.0)
-  (date: 04/14/25)
+  (version: 1.5)
+  (date: 04/15/25)
   (description: Tool length measurement using two-stage probing for Mazak-style toolsetters)
 
   (PRINT, TOOL_TOUCH_OFF: Starting tool length measurement routine)
   
-  (uses NGCGUI style arg spec)
-  (number after "=" in comment is default value)
-  #<probe_tool_number> = #3014
+  ; Get probe parameters directly from system variables
+  ; This ensures we always get the current values set by tool_setter_param_update.ngc
   #<probe_slow_fr> = #3015
   #<probe_fast_fr> = #3016
   #<traverse_fr> = #3017
   #<max_z_distance> = #3020
-  #<max_xy_distance> = #3018
-  #<xy_clearance> = #3019
   #<z_clearance> = #3021
-  #<retract_distance> = #3022
   #<spindle_zero_height> = #3023
-  #<tool_diameter_probe_mode> = #3024
-  #<tool_diameter_offset_mode> = #3025
-  #<tool_diameter> = #5410
+  #<current_tool> = #5400  ; Get current tool number
 
-  (PRINT, Parameters: probe_slow_fr=#<probe_slow_fr> probe_fast_fr=#<probe_fast_fr> traverse_fr=#<traverse_fr>)
+  ; Display current parameters for debugging
+  (PRINT, Current tool: #<current_tool>)
+  (PRINT, Current parameters: Slow=#<probe_slow_fr> Fast=#<probe_fast_fr> Traverse=#<traverse_fr>)
+  (PRINT, Spindle zero height: #<spindle_zero_height>)
   
-  ; Set default values if not provided
-  o90 if [#<probe_slow_fr> EQ 0]
-    #<probe_slow_fr> = 1.0
-    (PRINT, Using default probe_slow_fr: #<probe_slow_fr>)
+  ; Basic validation to ensure we have non-zero feed rates
+  ; Same approach as toolsetter_wco.ngc
+  o90 if [#<probe_slow_fr> LE 0]
+    #<probe_slow_fr> = 5.0  ; Default slow feed rate for imperial units
+    (PRINT, WARNING: Resetting probe_slow_fr to #<probe_slow_fr>)
   o90 endif
   
-  o91 if [#<probe_fast_fr> EQ 0]
-    #<probe_fast_fr> = 5.0
-    (PRINT, Using default probe_fast_fr: #<probe_fast_fr>)
+  o91 if [#<probe_fast_fr> LE 0]
+    #<probe_fast_fr> = 10.0  ; Default fast feed rate for imperial units
+    (PRINT, WARNING: Resetting probe_fast_fr to #<probe_fast_fr>)
   o91 endif
   
-  o92 if [#<traverse_fr> EQ 0]
-    #<traverse_fr> = 10.0
-    (PRINT, Using default traverse_fr: #<traverse_fr>)
+  o92 if [#<traverse_fr> LE 0]
+    #<traverse_fr> = 20.0  ; Default traverse feed rate for imperial units
+    (PRINT, WARNING: Resetting traverse_fr to #<traverse_fr>)
   o92 endif
   
-  o93 if [#<max_z_distance> EQ 0]
-    #<max_z_distance> = 4.0
-    (PRINT, Using default max_z_distance: #<max_z_distance>)
+  o93 if [#<max_z_distance> LE 0]
+    #<max_z_distance> = 6.0  ; Default max Z travel distance (6 inches)
+    (PRINT, WARNING: Resetting max_z_distance to #<max_z_distance>)
   o93 endif
   
-  o94 if [#<z_clearance> EQ 0]
-    #<z_clearance> = 0.1
-    (PRINT, Using default z_clearance: #<z_clearance>)
+  o94 if [#<z_clearance> LE 0]
+    #<z_clearance> = 0.1  ; Default clearance distance (0.1 inches)
+    (PRINT, WARNING: Resetting z_clearance to #<z_clearance>)
   o94 endif
   
-  ; Mazak-style toolsetter parameters
-  #<tool_touch_x_coords> = #5181
-  #<tool_touch_y_coords> = #5182
-  #<tool_touch_z_coords> = #5183
+  ; Toolsetter parameters - just like toolsetter_wco.ngc
+  #<toolsetter_decel_distance> = 0.5  ; Distance between decel and measure sensors
+  #<toolsetter_tolerance> = 0.001    ; Measurement tolerance
   
-  ; Verify toolsetter coordinate parameters
+  ; Get toolsetter coordinates from G30 reference position
+  #<tool_touch_x_coords> = #5181  ; G30 X position
+  #<tool_touch_y_coords> = #5182  ; G30 Y position
+  #<tool_touch_z_coords> = #5183  ; G30 Z position
+  
+  ; Verify we have valid G30 position
   o95 if [#<tool_touch_x_coords> EQ 0 OR #<tool_touch_y_coords> EQ 0]
-    (PRINT, Warning: Toolsetter coordinates not set in parameters)
-    o96 if [EXISTS[#<_ini[probe]x>] AND EXISTS[#<_ini[probe]y>]]
-      #<tool_touch_x_coords> = #<_ini[probe]x>
-      #<tool_touch_y_coords> = #<_ini[probe]y>
-      (PRINT, Using INI file toolsetter coordinates: X=#<tool_touch_x_coords> Y=#<tool_touch_y_coords>)
-    o96 else
-      (PRINT, WARNING: Using hardcoded toolsetter coordinates - might be unsafe)
-      #<tool_touch_x_coords> = -97.0
-      #<tool_touch_y_coords> = -358.0
-    o96 endif
+    (PRINT, WARNING: G30 position may not be set correctly - verify toolsetter location)
   o95 endif
-
+  
   ; Verify spindle zero height parameter  
   o97 if [#<spindle_zero_height> EQ 0]
-    (PRINT, Warning: Spindle zero height is 0, tool lengths may be incorrect)
-    o98 if [EXISTS[#<_ini[probe]spindle_zero_height>]]
-      #<spindle_zero_height> = #<_ini[probe]spindle_zero_height>
-      (PRINT, Using INI file spindle zero height: #<spindle_zero_height>)
-    o98 else
-      #<spindle_zero_height> = -4.0
-      (PRINT, Using default spindle zero height: #<spindle_zero_height>)
-    o98 endif
+    #<spindle_zero_height> = -4.0  ; Reasonable default for Mazak-style machine
+    (PRINT, WARNING: Using default spindle zero height: #<spindle_zero_height>)
   o97 endif
   
-  #<toolsetter_decel_distance> = 0.15748
-  #<toolsetter_tolerance> = 0.07874
-  
-  o100 if [EXISTS[#<_ini[probe]toolsetter_decel_distance>]]
-    #<toolsetter_decel_distance> = #<_ini[probe]toolsetter_decel_distance>
-    (PRINT, Using INI toolsetter_decel_distance: #<toolsetter_decel_distance>)
-  o100 endif
-  
-  o110 if [EXISTS[#<_ini[probe]toolsetter_tolerance>]]
-    #<toolsetter_tolerance> = #<_ini[probe]toolsetter_tolerance>
-    (PRINT, Using INI toolsetter_tolerance: #<toolsetter_tolerance>)
-  o110 endif
+  (PRINT, Tool touch off destination: X=#<tool_touch_x_coords> Y=#<tool_touch_y_coords>)
 
-  (PRINT, Toolsetter coordinates: X=#<tool_touch_x_coords> Y=#<tool_touch_y_coords>)
-
-  ; Check if required HAL pins are connected
+  ; Check if HAL pins are connected - essential for toolsetting
   M66 P7 L0  ; Try reading decel sensor
   o112 if [#5399 EQ -1]
     (PRINT, ERROR: Decel sensor P7 not connected in HAL)
-    M50 P1
     o<tool_touch_off> return [1]
   o112 endif
    
   M66 P8 L0  ; Try reading measure sensor
   o114 if [#5399 EQ -1]
     (PRINT, ERROR: Measure sensor P8 not connected in HAL)
-    M50 P1
     o<tool_touch_off> return [1]
   o114 endif
 
-  ; Cancel G92 offsets
-  G92.1
-
-  ; Cancel Feedrate Override
-  M50 P0
-
-  ; Force consistent modes
-  G40 ; Cancel tool diameter compensation
-  G49 ; Cancel tool length compensation
-  G80 ; Cancel canned cycles
-  G90 ; Absolute distance mode
-  G21 ; Metric mode - adjust if your machine uses imperial
+  ; Prepare for probing
+  G92.1       ; Cancel G92 offsets
+  M50 P0      ; Cancel Feedrate Override
+  G40 G49 G80 ; Cancel compensations and cycles
+  G90         ; Absolute distance mode
+  G20         ; Imperial mode (inches)
 
   (PRINT, Tool touch off sequence starting)
   
-  ; FIRST: Move Z to safe height to avoid collisions - WITH FEED RATE
-  F#<traverse_fr>    ; Set feed rate BEFORE any movement
-  G53 G1 Z0          ; Move to Z0 machine position WITH FEED
+  ; Move Z to safe height for traversal
+  F#<traverse_fr>
+  G53 G1 Z0 F#<traverse_fr>
   
-  ; THEN: Move to X,Y position above toolsetter - WITH FEED RATE
-  (PRINT, Moving to toolsetter position X=#<tool_touch_x_coords> Y=#<tool_touch_y_coords>)
-  G53 G1 X#<tool_touch_x_coords> Y#<tool_touch_y_coords> F#<traverse_fr>
+  ; Move to G30 position (toolsetter location)
+  (PRINT, Moving to toolsetter position)
+  G30
   
-  ; Current Z Position including offsets in current program units
+  ; Get current position after G30 move
+  #<start_x_pos> = #5420
+  #<start_y_pos> = #5421
   #<start_z_pos> = #5422
-  (PRINT, Current Z position: #<start_z_pos>)
+  (PRINT, At toolsetter: X=#<start_x_pos> Y=#<start_y_pos> Z=#<start_z_pos>)
 
-  ; Check if measurement sensor is already triggered before starting
-  M66 P8 L0  ; Read toolsetter-measure input
+  ; Check sensors before starting - avoid crashes
+  M66 P7 L0  ; Check decel sensor
   o115 if [#5399 EQ 1]
-    (PRINT, Error: Measure sensor already triggered, aborting)
-    F#<traverse_fr> 
-    G53 G1 Z0        ; Return to Z home WITH FEED
+    (PRINT, WARNING: Decel sensor already triggered before probing!)
+    G90
+    G53 G0 Z0  ; Return to Z home
     M50 P1
     o<tool_touch_off> return [1]
   o115 endif
-
-  ; Check decel sensor status first
-  M66 P7 L0  ; Read toolsetter-decel input
-  o120 if [#5399 EQ 1]
-    (PRINT, Warning: Decel sensor already activated, check tool length)
-    G90
-    F#<traverse_fr>
-    G1 Z[#<start_z_pos> + 0.5]  ; Move UP to clear WITH FEED
+   
+  M66 P8 L0  ; Check measure sensor
+  o116 if [#5399 EQ 1]
+    (PRINT, WARNING: Measure sensor already triggered before probing!)
+    G53 G0 Z0  ; Return to Z home
     M50 P1
     o<tool_touch_off> return [1]
-  o120 endif
+  o116 endif
   
-  (PRINT, Starting probing sequence)
+  (PRINT, Starting probing sequence - using fast feed rate: #<probe_fast_fr>)
   
-  ; MAZAK APPROACH - TWO-STAGE PROBING WITH CORRECT DIRECTION
-  ; First stage: find decel sensor with fast speed, monitoring with M66
+  ; PHASE 1: Find decel sensor with fast feed rate
+  G91  ; Incremental mode
   
-  G91 ; Set incremental mode
-  
-  ; Step with explicit moves while checking decel sensor
   #<decel_found> = 0
   #<current_depth> = 0
   
-  (PRINT, Beginning first-stage probe with feed rate: #<probe_fast_fr>)
-  F#<probe_fast_fr>   ; Set feed rate BEFORE movement loop
+  ; Set feed rate once before the loop
+  F#<probe_fast_fr>
   
+  ; Search for decel sensor with 0.25" steps
   o200 while [#<current_depth> LT #<max_z_distance> AND #<decel_found> EQ 0]
-    G1 Z-0.1  ; Move DOWN 0.1 units WITH PREVIOUSLY SET FEED
-    #<current_depth> = [#<current_depth> + 0.1]
+    G1 Z-0.25
+    #<current_depth> = [#<current_depth> + 0.25]
     
     M66 P7 L0  ; Check decel sensor
     o210 if [#5399 EQ 1]
       #<decel_found> = 1
       #<decel_z> = #5063
-      (PRINT, Decel sensor activated at depth=#<current_depth>)
+      (PRINT, Decel sensor found at Z=#<decel_z>)
     o210 endif
     
-    ; Check diagnostics every 0.5 units
-    o212 if [#<current_depth> MOD 0.5 LT 0.1]
-      (PRINT, Current depth: #<current_depth>, continuing search...)
+    ; Safety check - shouldn't hit measure sensor first
+    M66 P8 L0
+    o212 if [#5399 EQ 1]
+      (PRINT, ERROR: Measure sensor triggered before decel sensor!)
+      G90
+      G53 G0 Z0  ; Return to Z home
+      M50 P1
+      o<tool_touch_off> return [1]
     o212 endif
+    
+    ; Status updates during long moves
+    o214 if [#<current_depth> MOD 1.0 LT 0.25]
+      (PRINT, Searching at depth: #<current_depth>)
+    o214 endif
   o200 endwhile
   
   o220 if [#<decel_found> EQ 0]
-    (PRINT, Failed to detect decel sensor after #<current_depth> units of travel, aborting)
+    (PRINT, ERROR: Failed to find decel sensor after #<current_depth> inches)
     G90
-    F#<traverse_fr>
-    G1 Z#<start_z_pos>  ; Return to start Z position WITH FEED
+    G53 G0 Z0  ; Return to Z home
     M50 P1
     o<tool_touch_off> return [1]
   o220 endif
   
-  ; SECOND STAGE - PRECISION MEASUREMENT
-  (PRINT, Beginning second-stage precision probe)
-  G38.2 Z-[#<toolsetter_decel_distance> * 1.5] F#<probe_slow_fr>
+  ; PHASE 2: Find measure sensor with slow feed rate
+  (PRINT, Starting precision probe for measure sensor - feed rate: #<probe_slow_fr>)
+  
+  ; Position to decel sensor hit location first
+  G90
+  G1 Z#<decel_z> F#<traverse_fr>
+  
+  ; Then probe down slowly to find measure sensor
+  G91
+  G38.2 Z-1.0 F#<probe_slow_fr>
   
   o230 if [#5070 EQ 0]
-    (PRINT, Precision probe failed to touch off)
+    (PRINT, ERROR: Precision probe failed to find measure sensor)
     G90
-    F#<traverse_fr>
-    G1 Z#<start_z_pos>  ; Return to start Z position WITH FEED
+    G53 G0 Z0  ; Return to Z home
     M50 P1
     o<tool_touch_off> return [1]
   o230 endif
   
-  ; Record the position when measure sensor activated
+  ; Record the measure sensor position
   #<z_minus_probed> = #5063
   (PRINT, Measure sensor activated at Z=#<z_minus_probed>)
   
-  ; Retract from the touch point
+  ; Retract slightly from the measure sensor
   G90
-  F#<traverse_fr>
-  G1 Z[#<z_minus_probed> + #<z_clearance>]  ; Move UP by clearance WITH FEED
+  G1 Z[#<z_minus_probed> + #<z_clearance>] F#<traverse_fr>
+
+  ; Double-check with confirmation probe
+  (PRINT, Performing confirmation probe)
+  G91
+  G38.2 Z-[#<z_clearance> * 2] F#<probe_slow_fr>
+  
+  #<z_confirm_probed> = #5063
+  (PRINT, Confirmation probe hit at Z=#<z_confirm_probed>)
+  
+  ; Check if confirmation is within tolerance
+  #<probe_diff> = [ABS[#<z_minus_probed> - #<z_confirm_probed>]]
+  o240 if [#<probe_diff> GT #<toolsetter_tolerance>]
+    (PRINT, WARNING: Probe measurements differ by #<probe_diff> - outside tolerance #<toolsetter_tolerance>)
+  o240 endif
 
   ; Calculate tool length
-  #<tool_length> = [#<spindle_zero_height> - #<z_minus_probed>]
+  #<tool_length> = [#<spindle_zero_height> - #<z_confirm_probed>]
   
-  (PRINT, Tool length: #<tool_length>)
+  (PRINT, Calculated tool length: #<tool_length>)
   
-  ; Set tool table entry
-  G10 L1 P#<_current_tool> Z[#<tool_length>]
+  ; Update tool table with new length
+  G10 L1 P#<current_tool> Z#<tool_length>
   
-  G43 H#<_current_tool> ; use tool length compensation
+  ; Apply the tool length compensation
+  G43 H#<current_tool>
   
-  ; Move to safe height for ATC
+  ; Retract from toolsetter
   G90
-  F#<traverse_fr>
-  o250 if [EXISTS[#<_ini[atc]z_tool_clearance_height>]]
-    G53 G1 Z#<_ini[atc]z_tool_clearance_height> F#<traverse_fr>
-  o250 else
-    G53 G1 Z0 F#<traverse_fr>  ; Move to Z0 WITH FEED
-  o250 endif
-
+  G1 Z[#<z_confirm_probed> + 0.5] F#<traverse_fr>
+  
+  ; Return to safe Z height
+  G53 G0 Z0
+  
   ; Reinstate Feedrate Override
   M50 P1
   
-  (PRINT, Tool touch off complete - Tool length set to: #<tool_length>)
+  (PRINT, Tool touch off complete - Tool #<current_tool> length set to: #<tool_length>)
+  (PRINT, Tool table updated with command: G10 L1 P#<current_tool> Z#<tool_length>)
 
 o<tool_touch_off> endsub [1]
 
