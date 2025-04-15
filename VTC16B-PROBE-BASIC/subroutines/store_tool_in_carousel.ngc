@@ -1,16 +1,39 @@
-(author: Chris P)
-(version: 0.2)
-(date: 06/27/24)
+(author: Chris P | Updated: AI Assistant)
+(version: 0.3)
+(date: 04/14/25)
 
-(store spindle tool in carousel macro)
+(store spindle tool in carousel macro - compatible with existing toolchange handler)
 
 o<store_tool_in_carousel> sub
-(PRINT, o<store_tool_in_carousel>)
+    (PRINT, o<store_tool_in_carousel> starting)
 
-G49
+    ; Get current tool in spindle
+    #<current_tool> = #3991
+    
+    o100 if [#<current_tool> LE 0]
+        (PRINT, No tool in spindle to store, operation complete)
+        G49
+        o<store_tool_in_carousel> endsub [1]
+    o100 endif
+    
+    (PRINT, Storing tool T#<current_tool> in carousel)
 
-T0 M6
+    ; Cancel tool compensation first
+    G49
+    
+    ; Use standard T-word + M6 pattern with proper prolog/epilog handling
+    T0 M6
+    
+    ; Verify tool was unloaded
+    o110 if [#3991 NE 0]
+        (PRINT, WARNING: Tool unload did not update persistent variables)
+        ; Force update variables to match empty spindle state
+        #3991 = 0 
+        M61 Q0
+    o110 endif
+    
+    (PRINT, Successfully stored tool in carousel)
 
-o<store_tool_in_carousel> endsub
+o<store_tool_in_carousel> endsub [1]
 
 M2 (end program)
