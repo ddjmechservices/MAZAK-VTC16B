@@ -1,39 +1,43 @@
-(author: Chris P | Updated: AI Assistant)
+(author: Chris P, updated by DDJ Mech Services)
 (version: 0.3)
-(date: 04/14/25)
+(date: 04/16/25)
 
-(store spindle tool in carousel macro - compatible with existing toolchange handler)
+(Store spindle tool in carousel macro)
 
 o<store_tool_in_carousel> sub
-    (PRINT, o<store_tool_in_carousel> starting)
 
-    ; Get current tool in spindle
-    #<current_tool> = #3991
-    
-    o100 if [#<current_tool> LE 0]
-        (PRINT, No tool in spindle to store, operation complete)
-        G49
-        o<store_tool_in_carousel> endsub [1]
-    o100 endif
-    
-    (PRINT, Storing tool T#<current_tool> in carousel)
+(Get current tool and pocket from Probe Basic parameters)
+#<current_tool> = #3991
+#<current_pocket> = #3990
 
-    ; Cancel tool compensation first
-    G49
-    
-    ; Use standard T-word + M6 pattern with proper prolog/epilog handling
-    T0 M6
-    
-    ; Verify tool was unloaded
-    o110 if [#3991 NE 0]
-        (PRINT, WARNING: Tool unload did not update persistent variables)
-        ; Force update variables to match empty spindle state
-        #3991 = 0 
-        M61 Q0
-    o110 endif
-    
-    (PRINT, Successfully stored tool in carousel)
+(Get tool change positions from INI file)
+#<z_tool_change_position> = #<_ini[atc]z_tool_change_height>
+#<x_tool_change_position> = #<_ini[atc]x_tool_change_pos>
+#<y_tool_change_position> = #<_ini[atc]y_tool_change_pos>
 
-o<store_tool_in_carousel> endsub [1]
+(DEBUG, Storing tool #<current_tool> from pocket #<current_pocket> in carousel)
+
+G49    (Cancel tool length compensation)
+G90    (Ensure absolute coordinates)
+
+(First move Z to safe height)
+G53 G0 Z0
+
+(Move to tool change position)
+G53 G0 Z[#<z_tool_change_position>]
+G53 G0 X[#<x_tool_change_position>] Y[#<y_tool_change_position>]
+
+(Check if we already have tool 0 loaded - if yes, nothing to do)
+o100 if [#<current_tool> EQ 0]
+    (DEBUG, Tool 0 already loaded, nothing to store)
+    o<store_tool_in_carousel> return
+o100 endif
+
+(Execute tool change to store current tool and load tool 0)
+T0 M6
+
+(DEBUG, Tool #<current_tool> stored successfully)
+
+o<store_tool_in_carousel> endsub
 
 M2 (end program)
