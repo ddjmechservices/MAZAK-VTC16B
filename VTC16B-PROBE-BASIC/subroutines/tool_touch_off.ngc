@@ -1,54 +1,44 @@
-(author: Chris P, TooTall18)
-(version: 0.9)
-(date: 04/15/25)
+(author: Chris P, TooTall18, updated by DDJ Mech Services)
+(version: 1.4)
+(date: 04/16/25)
 
 o<tool_touch_off> sub
 
-; Load feed rate parameters DIRECTLY from system variables each time
-(DEBUG, Loading parameters from system variables)
-; Force re-read with explicit calculations to prevent caching issues
-#<fast_probe_fr> = [#3016 + 0]    (set from probe screen fast probe feed rate)
-#<slow_probe_fr> = [#3015 + 0]    (set from probe screen slow probe feedrate)
-#<traverse_fr> = [#3017 + 0]    (set from probe screen traverse probe feedrate)
-#<z_max_travel> = [#3020 + 0]    (max z distance the tool travels before erroring out if not contact is made)
-#<xy_max_travel> = [#3018 + 0]    (max xy distance the tool travels before erroring out if not contact is made)
-#<retract_distance> = [#3022 + 0]    (distance the tool retracts after making contact during fast feed mode)
-#<spindle_zero_height> = [#3023 + 0]    (G53 distance from home to spindle nose triggering point on touch plate)
-#<tool_diameter_probe_mode> = [#3011 + 0]    (activates the tool diameter probe subroutine section)
-#<tool_diameter_offset_mode> = [#3012 + 0]    (activates the tool diameter offset position for probe subroutine section)
-#<tool_setter_offset_direction> = [#3013 + 0]    (sets tool setter offset direction to move tool)
-#<tool_diameter> = [#5410 + 0]    (current tool's diameter used for offseting probe position in x axis)
-#<current_tool> = [#5400 + 0]    (current tool number)
+#<fast_probe_fr> = #3004    (set from probe screen fast probe feed rate)
+#<slow_probe_fr> = #3005    (set from probe screen slow probe feedrate)
+#<traverse_fr> = #3006    (set from probe screen traverse probe feedrate)
+#<z_max_travel> = #3007    (max z distance the tool travels before erroring out if not contact is made)
+#<xy_max_travel> = #3008    (max xy distance the tool travels before erroring out if not contact is made)
+#<retract_distance> = #3009    (distance the tool retracts after making contact during fast feed mode)
+#<spindle_zero_height> = #3010    (G53 distance from home to spindle nose triggering point on touch plate)
+#<tool_diameter_probe_mode> = #3011    (activates the tool diameter probe subroutine section)
+#<tool_diameter_offset_mode> = #3012    (activates the tool diameter offset position for probe subroutine section)
+#<tool_setter_offset_direction> = #3013    (sets tool setter offset direction to move tool)
+#<tool_diameter> = #5410    (current tool's diameter used for offseting probe position in x axis)
 
-(DEBUG, TOOL TOUCH OFF: Starting with parameters)
-(DEBUG, Feed rates: Fast=#<fast_probe_fr> Slow=#<slow_probe_fr> Traverse=#<traverse_fr>)
-(DEBUG, Tool: #<current_tool> Diameter: #<tool_diameter>)
+(Get tool change positions directly from INI file)
+#<z_tool_change_position> = #<_ini[atc]z_tool_change_height>
+#<x_tool_change_position> = #<_ini[atc]x_tool_change_pos>
+#<y_tool_change_position> = #<_ini[atc]y_tool_change_pos>
 
-; Validate feed rates - ensure we have non-zero values
-o90 if [#<fast_probe_fr> LE 0]
-    #<fast_probe_fr> = 10.0
-    (DEBUG, WARNING: Using default fast_probe_fr=#<fast_probe_fr>)
-o90 endif
+(Store current position for safe return)
+#<start_x> = #5420
+#<start_y> = #5421
+#<start_z> = #5422
 
-o91 if [#<slow_probe_fr> LE 0]
-    #<slow_probe_fr> = 5.0
-    (DEBUG, WARNING: Using default slow_probe_fr=#<slow_probe_fr>)
-o91 endif
-
-o92 if [#<traverse_fr> LE 0]
-    #<traverse_fr> = 20.0
-    (DEBUG, WARNING: Using default traverse_fr=#<traverse_fr>)
-o92 endif
+(Validate feed rates)
+o105 if [#<traverse_fr> LE 0]
+    #<traverse_fr> = 500
+    (DEBUG, Warning: traverse_fr was zero, using 500 instead)
+o105 endif
 
 G92.1    (Cancel G92 offset)
-M50 P0    (Disable feedrate override)
-G20       (Ensure imperial units)
+M50 P0
 
 #<tool_touch_x_coords> = #5181
 #<tool_touch_y_coords> = #5182
 #<tool_touch_z_coords> = #5183
 
-; Handle tool diameter offsets for different toolsetter positions
 #<tool_radius_offset> = [#<tool_diameter> / 2]
 #<left_offset_probing_position> = [#<tool_touch_x_coords> - #<tool_radius_offset>]
 #<right_offset_probing_position> = [#<tool_touch_x_coords> + #<tool_radius_offset>]
@@ -67,201 +57,128 @@ o100 if [#<tool_diameter_offset_mode> EQ 1]
     o101 endif
 o100 endif
 
-; Cancel any existing tool offsets
-G49
-G80
+G49    (Cancel tool length compensation)
+
 G90    (set absolute coordinates)
+G53 G1 F[#<traverse_fr>] Z0    (Move to Z0 instead of tool change height)
+G53 G1 F[#<traverse_fr>] X#<tool_touch_x_coords> Y#<tool_touch_y_coords>
+G53 G1 F[#<traverse_fr>] Z#<tool_touch_z_coords>
 
-; -------- TOOLSETTER APPROACH SEQUENCE --------
-; First move Z to safe height
-G53 G0 Z0    (move to z0 home position with rapid)
+#<offset_z> = #5422         (Stores the offset of the current Z coordinate)
 
-; Then move to toolsetter XY position
-G53 G0 X#<tool_touch_x_coords> Y#<tool_touch_y_coords>    (Rapid to XY position)
-
-; Calculate a safe Z approach position (negative value ensures downward movement)
-#<safe_approach_z> = -17.0    (17 inches below Z0, adjust as needed for your machine)
-(DEBUG, Using safe approach position: Z=#<safe_approach_z>)
-
-; Move to safe Z approach position (guaranteed Z- movement)
-(DEBUG, Moving Z to #<safe_approach_z> at F=#<traverse_fr>)
-G53 G1 F#<traverse_fr> Z#<safe_approach_z>    (Feed DOWN to approach position)
-
-; Store current Z coordinate for offset calculation later
-#<offset_z> = #5422         ;Stores the offset of the current Z coordinate.
-(DEBUG, At Z approach position: #<offset_z>)
-
-; Check decel sensor status before starting
-M66 P7 L0  ; Read toolsetter-decel input
-o110 if [#5399 EQ 1]
-    (DEBUG, WARNING: Decel sensor already activated before probing, aborting!)
-    G53 G0 Z0    (Return to Z home with rapid)
-    M50 P1
-    o<tool_touch_off> return [1]
-o110 endif
-
-; Check measure sensor status before starting
-M66 P8 L0  ; Read toolsetter-measure input
-o115 if [#5399 EQ 1]
-    (DEBUG, WARNING: Measure sensor already activated before probing, aborting!)
-    G53 G0 Z0    (Return to Z home with rapid)
-    M50 P1
-    o<tool_touch_off> return [1]
-o115 endif
-
-; -------- DECEL SENSOR SEARCH (NON-G38 APPROACH) --------
-(DEBUG, Searching for decel sensor at feed rate: #<traverse_fr>)
-
-; Set maximum Z travel distance for safety
-#<max_z_travel_incs> = -#<z_max_travel>    (Make negative for Z- direction)
-#<decel_found> = 0
-#<current_depth> = 0
-#<step_size> = 0.25  ; Smaller for precision
-
-; Use feed moves and M66 instead of G38.2 for decel
-G91    (Incremental mode)
-o200 while [#<current_depth> LT #<z_max_travel> AND #<decel_found> EQ 0]
-    ; Use exact feedrate command to overcome any caching
-    F#<traverse_fr> G1 Z-#<step_size>    (Move down in steps)
-    #<current_depth> = [#<current_depth> + #<step_size>]
-    
-    M66 P7 L0    (Check decel sensor)
-    o210 if [#5399 EQ 1]
-        #<decel_found> = 1
-        #<decel_z_pos> = #5063    (Capture Z position of decel sensor)
-        (DEBUG, Decel sensor activated at depth: #<current_depth> Z: #<decel_z_pos>)
-    o210 endif
-o200 endwhile
-
-o220 if [#<decel_found> EQ 0]
-    (DEBUG, ERROR: Decel sensor not found after #<current_depth> inches of travel)
+(Check if measurement sensor is already triggered before starting)
+M66 P8 L0  
+o125 if [#5399 EQ 1]
+    (DEBUG, Error: Measure sensor already triggered, aborting)
     G90
-    G53 G0 Z0    (Return to Z home with rapid)
+    G53 G1 F[#<traverse_fr>] Z0
+    G53 G1 F[#<traverse_fr>] Z[#<z_tool_change_position>]
+    G53 G1 F[#<traverse_fr>] X[#<x_tool_change_position>] Y[#<y_tool_change_position>]
     M50 P1
-    o<tool_touch_off> return [1]
+    o<tool_touch_off> return
+o125 endif
+
+(STEP 1: FIND MEASURE SENSOR - FAST PROBE)
+G91    (Switch to incremental mode)
+F[#<fast_probe_fr>]
+G38.2 Z-[#<z_max_travel>]    (Find measure sensor with G38.2)
+o210 if [#5070 EQ 0]
+    (DEBUG, Failed to detect measure sensor, aborting)
+    G90
+    G53 G1 F[#<traverse_fr>] Z0
+    G53 G1 F[#<traverse_fr>] Z[#<z_tool_change_position>]
+    G53 G1 F[#<traverse_fr>] X[#<x_tool_change_position>] Y[#<y_tool_change_position>]
+    M50 P1
+    o<tool_touch_off> return
+o210 endif
+
+(Store fast probe result)
+#<z_fast_probe> = #5063
+(DEBUG, Fast measure: Measure sensor activated at Z=#<z_fast_probe>)
+
+(Retract for first precision measurement)
+G90    (Switch to absolute coordinates)
+G1 F[#<traverse_fr>] Z[#<z_fast_probe> + #<retract_distance>]    (Retract tool by retract_distance)
+
+(STEP 2: FIRST PRECISION MEASUREMENT)
+G91    (Switch back to incremental mode)
+F[#<slow_probe_fr>]    (Use slow probe feedrate for measure sensor)
+G38.2 Z-[#<retract_distance> * 2]    (Slow tool probe)
+
+o220 if [#5070 EQ 0]
+    (DEBUG, First precision probe failed - no contact detected)
+    G90
+    G53 G1 F[#<traverse_fr>] Z0
+    G53 G1 F[#<traverse_fr>] Z[#<z_tool_change_position>]
+    G53 G1 F[#<traverse_fr>] X[#<x_tool_change_position>] Y[#<y_tool_change_position>]
+    M50 P1
+    o<tool_touch_off> return
 o220 endif
 
-; Retract slightly from decel position
-G90    (Return to absolute mode)
-(DEBUG, Retracting from decel at F=#<traverse_fr> to Z=#<decel_z_pos>+0.050")
-F#<traverse_fr> G1 Z[#<decel_z_pos> + 0.050]    (Retract 0.050" to clear decel sensor)
-G4 P0.5    (Dwell for stability)
+(Store first slow probe result)
+#<z_slow_probe_1> = #5063
+(DEBUG, First precision measure: Sensor activated at Z=#<z_slow_probe_1>)
 
-; Verify decel sensor is cleared
-M66 P7 L0
-o225 if [#5399 EQ 1]
-    (DEBUG, WARNING: Unable to clear decel sensor after retract)
-o225 endif
+(Retract for second precision measurement)
+G90    (Switch back to absolute coordinates)
+G1 F[#<traverse_fr>] Z[#<z_slow_probe_1> + #<retract_distance>]    (Retract tool after measurement)
 
-; -------- MEASURE SENSOR SEARCH --------
-(DEBUG, Finding measure sensor with feed rate: #<fast_probe_fr>)
+(STEP 3: SECOND PRECISION MEASUREMENT)
+G91    (Switch back to incremental mode)
+F[#<slow_probe_fr>]    (Use slow probe feedrate for measure sensor)
+G38.2 Z-[#<retract_distance> * 2]    (Slow tool probe)
 
-; Reset probe input to default before using G38.2
-M65 P#<PROBE_INPUT_DECEL> 
-M64 P0    (Ensure default probe input)
-G4 P0.2   (Give HAL time to update)
-
-; Check measure pin status before using G38.2
-M66 P8 L0    (Check if measure sensor is already triggered)
-o228 if [#5399 EQ 1]
-    (DEBUG, WARNING: Measure sensor already triggered before G38.2 move)
-    ; Try to clear the sensor with a small retract
-    G91
-    F#<traverse_fr> G1 Z0.150    (Retract 0.150" to try clearing)
+o230 if [#5070 EQ 0]
+    (DEBUG, Second precision probe failed - no contact detected)
     G90
-    G4 P0.5
-    
-    ; Check again
-    M66 P8 L0
-    o229 if [#5399 EQ 1]
-        (DEBUG, ERROR: Cannot clear measure sensor, aborting)
-        G90
-        G53 G0 Z0    (Return to Z home)
-        M50 P1
-        o<tool_touch_off> return [1]
-    o229 endif
-o228 endif
-
-; Use G38.2 to find measure sensor at fast_probe_fr
-G91    (Switch to incremental mode)
-(DEBUG, Probing for measure sensor at F=#<fast_probe_fr>)
-G38.2 Z-1.0 F#<fast_probe_fr>    (Probe down at fast_probe_fr)
-
-o230 if [#5070 EQ 1]    (Verify probe event was successful)
-    #<z_probe_pos> = #5063    (Save measure sensor position)
-    (DEBUG, Measure sensor activated at Z:#<z_probe_pos>)
-o230 else
-    (DEBUG, ERROR: Measure sensor not found)
-    G90
-    G53 G0 Z0    (Return to Z home with rapid)
+    G53 G1 F[#<traverse_fr>] Z0
+    G53 G1 F[#<traverse_fr>] Z[#<z_tool_change_position>]
+    G53 G1 F[#<traverse_fr>] X[#<x_tool_change_position>] Y[#<y_tool_change_position>]
     M50 P1
-    o<tool_touch_off> return [1]
+    o<tool_touch_off> return
 o230 endif
 
-; Retract from the touch point by 0.375 inches
-G90    (Absolute mode)
-F#<traverse_fr> G1 Z[#<z_probe_pos> + 0.375]    (Retract exactly 0.375")
-G4 P0.5    (Dwell for stability)
+(Store second slow probe result)
+#<z_slow_probe_2> = #5063
+(DEBUG, Second precision measure: Sensor activated at Z=#<z_slow_probe_2>)
 
-; Check measure sensor is cleared before confirmation probe
-M66 P8 L0
-o235 if [#5399 EQ 1]
-    (DEBUG, WARNING: Measure sensor still triggered after retract)
-    ; Try to clear the sensor with additional retract
-    F#<traverse_fr> G1 Z[#<z_probe_pos> + 0.500]    (Retract 0.5" total)
-    G4 P0.5
-    
-    M66 P8 L0
-    o236 if [#5399 EQ 1]
-        (DEBUG, ERROR: Cannot clear measure sensor for confirmation probe, aborting)
-        G90
-        G53 G0 Z0    (Return to Z home)
-        M50 P1
-        o<tool_touch_off> return [1]
-    o236 endif
+(Calculate the average of the two precision probes)
+#<z_slow_probe_avg> = [[#<z_slow_probe_1> + #<z_slow_probe_2>] / 2]
+(DEBUG, Average of precision measurements: #<z_slow_probe_avg>)
+
+(Check for large discrepancy between measurements)
+#<probe_difference> = [ABS[#<z_slow_probe_1> - #<z_slow_probe_2>]]
+o235 if [#<probe_difference> GT 0.010]
+    (DEBUG, Warning: Precision probes differ by #<probe_difference> inches)
 o235 endif
 
-; Second confirmation probe at slow_probe_fr
-(DEBUG, Performing confirmation probe with feed rate: #<slow_probe_fr>)
-G91    (Back to incremental)
-G38.2 Z-0.75 F#<slow_probe_fr>    (Probe with slow feedrate)
+(Retract after precision measurements)
+G90    (Switch back to absolute coordinates)
+G1 F[#<traverse_fr>] Z[#<z_slow_probe_2> + #<retract_distance>]    (Retract tool after measurement)
 
-o240 if [#5070 EQ 1]    (Verify probe event was successful)
-    #<z_confirm_pos> = #5063    (Record second measurement)
-    (DEBUG, Confirmation probe at Z:#<z_confirm_pos>)
-    
-    ; Compare the two measurements
-    #<probe_diff> = [ABS[#<z_probe_pos> - #<z_confirm_pos>]]
-    o245 if [#<probe_diff> GT 0.001]    (Check if difference exceeds tolerance)
-        (DEBUG, WARNING: Probe measurements differ by #<probe_diff> - exceeds tolerance)
-    o245 endif
-    
-    ; Calculate new tool length
-    #<new_tool_length_offset> = [ABS[#<spindle_zero_height> + #<z_confirm_pos> - #<offset_z>]]
-    (DEBUG, Calculated tool length offset: #<new_tool_length_offset>)
-    
-    ; Update tool table using current tool number variable
-    G10 L1 P#<current_tool> Z[#<new_tool_length_offset>]
-    
-    ; Apply the tool length compensation
-    G43 H#<current_tool>
-    
-    (DEBUG, Tool #<current_tool> length updated to #<new_tool_length_offset>)
-o240 else
-    (DEBUG, ERROR: Confirmation probe failed)
-    G90
-    G53 G0 Z0    (Return to Z home with rapid)
-    M50 P1
-    o<tool_touch_off> return [1]
-o240 endif
+(Tool Diameter Probe Mode Section, User must define this section as needed)
+o140 if [#<tool_diameter_probe_mode> EQ 1]
+    (DEBUG, Tool Diameter Probing is Not Defined in Subroutine)
+o140 endif
 
-; -------- CLEANUP AND EXIT --------
-G90    (Set absolute coordinates)
-G53 G0 Z0    (Rapid return to tool change height)
+G49    (Cancel any active tool length compensation)
+
+G90    (Ensure absolute coordinates)
+G53 G1 F[#<traverse_fr>] Z0    (First move Z to 0)
+
+(Define new tool length offset parameters using averaged value)
+#<new_tool_length_offset> = [ABS[#<spindle_zero_height> + #<z_slow_probe_avg> - #<offset_z>]]
+
+G10 L1 P#5400 Z[#<new_tool_length_offset>]    (5400 = tool number)
+(DEBUG, Tool #5400 length offset set to #<new_tool_length_offset>)
+
+T#5400 G43 H#5400    (Enable tool length offset)
+
+(Move to tool change position from INI file)
+G53 G1 F[#<traverse_fr>] Z[#<z_tool_change_position>]
+G53 G1 F[#<traverse_fr>] X[#<x_tool_change_position>] Y[#<y_tool_change_position>]
 
 M50 P1    (Reinstate feedrate override)
-
-(DEBUG, Tool touch off completed successfully)
 
 o<tool_touch_off> endsub
 

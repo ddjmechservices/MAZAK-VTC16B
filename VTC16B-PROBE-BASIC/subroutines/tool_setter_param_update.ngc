@@ -1,38 +1,82 @@
 o<tool_setter_param_update> sub
 
-  (uses NGCGUI style arg spec)
-  (number after "=" in comment is default value)
-  #<spindle_zero_height> = #1  (=0.0)
-  #<toolsetter_decel_distance> = #2  (=0.15748)
-  #<toolsetter_tolerance> = #3  (=0.07874)
+  #<fast_probe_fr_3004> = #1
+  #<slow_probe_fr_3005> = #2
+  #<traverse_fr_3006> = #3
+  #<z_max_travel_3007> = #4
+  #<xy_max_travel_3008> = #5
+  #<retract_distance_3009> = #6
+  #<spindle_zero_height_3010> = #7
+  #<tool_diameter_probe_mode_3011> = #8
+  #<tool_diameter_offset_mode_3012> = #9
+  #<tool_setter_offset_direction_3013> = #10
+  #<breakage_tolerance_3037> = #11
+  #<user_setter_1_3038> = #12
+  #<user_setter_2_3039> = #13
 
-  (Cancel G92 offsets)
-  G92.1
-  
-  (Set the spindle_zero_height parameter)
-  #3023 = #<spindle_zero_height>
-  
-  (Set the Mazak toolsetter parameters)
-  o100 if [EXISTS[#<_ini[probe]toolsetter_decel_distance>]]
-    (Do not change if already set in INI)
-  o100 else
-    (Save parameter to global variable)
-    #<_ini[probe]toolsetter_decel_distance> = #<toolsetter_decel_distance>
-  o100 endif
-  
-  o110 if [EXISTS[#<_ini[probe]toolsetter_tolerance>]]
-    (Do not change if already set in INI)
-  o110 else
-    (Save parameter to global variable)
-    #<_ini[probe]toolsetter_tolerance> = #<toolsetter_tolerance>
-  o110 endif
-  
-  (Output the current values for verification)
-  (PRINT, Toolsetter Parameters Updated:)
-  (PRINT, Spindle Zero Height: #3023)
-  (PRINT, Decel Distance: #<_ini[probe]toolsetter_decel_distance>)
-  (PRINT, Measurement Tolerance: #<_ini[probe]toolsetter_tolerance>)
-  
+  #3004 = #<fast_probe_fr_3004>
+
+  #3005 = #<slow_probe_fr_3005>
+
+  #3006 = #<traverse_fr_3006>
+
+  #3007 = #<z_max_travel_3007>
+
+  #3008 = #<xy_max_travel_3008>
+
+  #3009 = #<retract_distance_3009>
+
+  #3010 = #<spindle_zero_height_3010>
+
+  #3011 = #<tool_diameter_probe_mode_3011>
+
+  #3012 = #<tool_diameter_offset_mode_3012>
+
+  #3013 = #<tool_setter_offset_direction_3013>
+
+  #3037 = #<breakage_tolerance_3037>
+
+  #3038 = #<user_setter_1_3038>
+
+  #3039 = #<user_setter_2_3039>
+
 o<tool_setter_param_update> endsub [1]
 
 M2
+;
+;  (uses NGCGUI style arg spec)
+;  (number after "=" in comment is default value)
+;  #<spindle_zero_height> = #1  (=0.0)
+;  #<toolsetter_decel_distance> = #2  (=0.15748)
+;  #<toolsetter_tolerance> = #3  (=0.07874)
+;
+;  (Cancel G92 offsets)
+;  G92.1
+;  
+;  (Set the spindle_zero_height parameter)
+;  #3023 = #<spindle_zero_height>
+;  
+;  (Set the Mazak toolsetter parameters)
+;  o100 if [EXISTS[#<_ini[probe]toolsetter_decel_distance>]]
+;    (Do not change if already set in INI)
+;  o100 else
+;    (Save parameter to global variable)
+;    #<_ini[probe]toolsetter_decel_distance> = #<toolsetter_decel_distance>
+;  o100 endif
+;  
+;  o110 if [EXISTS[#<_ini[probe]toolsetter_tolerance>]]
+;    (Do not change if already set in INI)
+;  o110 else
+;    (Save parameter to global variable)
+;    #<_ini[probe]toolsetter_tolerance> = #<toolsetter_tolerance>
+;  o110 endif
+;  
+;  (Output the current values for verification)
+;  (PRINT, Toolsetter Parameters Updated:)
+;  (PRINT, Spindle Zero Height: #3023)
+;  (PRINT, Decel Distance: #<_ini[probe]toolsetter_decel_distance>)
+;  (PRINT, Measurement Tolerance: #<_ini[probe]toolsetter_tolerance>)
+;  
+;o<tool_setter_param_update> endsub [1]
+;
+;M2
