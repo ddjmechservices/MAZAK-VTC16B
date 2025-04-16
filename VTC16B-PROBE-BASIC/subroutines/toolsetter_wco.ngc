@@ -15,21 +15,21 @@ o<toolsetter_wco> sub
   #<tool_diameter_probe_mode> = #3024
   #<tool_diameter_offset_mode> = #3025
   #<tool_diameter> = #5410
+  #<decel_to_measure_max_distance> = 1.1  (Maximum safe distance between decel and measure in inches)
   
-  (Mazak-style toolsetter parameters)
+  (Toolsetter parameters)
   #<tool_touch_x_coords> = #5181
   #<tool_touch_y_coords> = #5182
   #<tool_setter_height> = #5183
-  #<toolsetter_decel_distance> = 0.15748
   #<toolsetter_tolerance> = 0.07874
-  
-  o100 if [EXISTS[#<_ini[probe]toolsetter_decel_distance>]]
-    #<toolsetter_decel_distance> = #<_ini[probe]toolsetter_decel_distance>
-  o100 endif
   
   o110 if [EXISTS[#<_ini[probe]toolsetter_tolerance>]]
     #<toolsetter_tolerance> = #<_ini[probe]toolsetter_tolerance>
   o110 endif
+
+  o112 if [EXISTS[#<_ini[probe]decel_to_measure_max_distance>]]
+    #<decel_to_measure_max_distance> = #<_ini[probe]decel_to_measure_max_distance>
+  o112 endif
   
   (start with an m6, do all the standard m6 stuff and then touch off)
   M6
@@ -62,50 +62,73 @@ o<toolsetter_wco> sub
     M50 P1
     o<toolsetter_wco> return
   o125 endif
-
-  (Check decel sensor status first)
-  M66 P7 L0  (Read X08 toolsetter-decel input)
-  o130 if [#5399 EQ 1]
-    (PRINT, Warning: Decel sensor already activated, check tool length)
+  
+  (Check if decel sensor is already triggered)
+  M66 P7 L0  (Read decel sensor input)
+  o126 if [#5399 EQ 1]
+    (PRINT, Error: Decel sensor already triggered, aborting)
     G90
-    G1 F[ABS[#<traverse_fr>]] Z[#<start_z_pos> + 0.5]
+    G53 G1 F[ABS[#<traverse_fr>]] Z0
     M50 P1
     o<toolsetter_wco> return
-  o130 endif
+  o126 endif
   
-  (MAZAK APPROACH - TWO-STAGE PROBING)
-  (First stage: find decel sensor with fast speed, monitoring with M66)
-  
+  (FIRST STAGE - FIND DECEL SENSOR WITH FAST PROBE)
   G91 (Set incremental mode)
+  (PRINT, Beginning fast probe to locate decel sensor)
   F[#<probe_fast_fr>]
   
-  (Step with explicit moves while checking decel sensor)
-  #<decel_found> = 0
-  #<current_depth> = 0
+  (First find the decel sensor)
+  G38.3 Z-[#<max_z_distance>] (Fast probe to find decel sensor)
   
-  o200 while [#<current_depth> LT #<max_z_distance> AND #<decel_found> EQ 0]
-    G1 Z-0.1 F[#<probe_fast_fr>]  (Move DOWN 0.1 units)
-    #<current_depth> = [#<current_depth> + 0.1]
-    
-    M66 P7 L0  (Check decel sensor)
-    o210 if [#5399 EQ 1]
-      #<decel_found> = 1
-      #<decel_z> = #5063
-      (PRINT, Decel sensor activated at depth=#<current_depth>)
-    o210 endif
-  o200 endwhile
-  
-  o220 if [#<decel_found> EQ 0]
+  o210 if [#5070 EQ 0]
     (PRINT, Failed to detect decel sensor, aborting)
+    G90
+    G1 F[#<traverse_fr>] Z#<start_z_pos>
+    M50 P1
+    o<toolsetter_wco> return
+  o210 endif
+  
+  (Record decel sensor position)
+  #<decel_z> = #5063
+  (PRINT, Decel sensor activated at Z=#<decel_z>)
+  
+  (SECOND STAGE - FIND MEASURE SENSOR FROM DECEL POINT)
+  (PRINT, Continuing to find measure sensor)
+  F[#<probe_slow_fr>]  (Slower feed rate for precision)
+  G38.2 Z-[#<decel_to_measure_max_distance>]  (Move up to max safe distance)
+  
+  o220 if [#5070 EQ 0]
+    (PRINT, Failed to detect measure sensor within safety distance, aborting)
     G90
     G1 F[#<traverse_fr>] Z#<start_z_pos>
     M50 P1
     o<toolsetter_wco> return
   o220 endif
   
-  (SECOND STAGE - PRECISION MEASUREMENT)
+  (Record fast probe contact point)
+  #<fast_probe_z> = #5063
+  (PRINT, Fast probe contact at Z=#<fast_probe_z>)
+  
+  (VERIFY SENSORS ARE AT A REASONABLE DISTANCE APART)
+  #<sensors_distance> = [ABS[#<decel_z> - #<fast_probe_z>]]
+  o225 if [#<sensors_distance> GT #<decel_to_measure_max_distance>]
+    (PRINT, Warning: Distance between sensors (#<sensors_distance>) exceeds maximum)
+    G90
+    G1 F[#<traverse_fr>] Z#<start_z_pos>
+    M50 P1
+    o<toolsetter_wco> return
+  o225 endif
+  
+  (Retract by standard amount for precision measurement)
+  G90
+  G1 F[#<traverse_fr>] Z[#<fast_probe_z> + #<retract_distance>]
+  
+  (THIRD STAGE - PRECISION MEASUREMENT)
+  G91 (Ensure incremental mode)
+  (PRINT, Beginning precision measurement)
   F[#<probe_slow_fr>]  (Set slow feed rate)
-  G38.2 Z-[#<toolsetter_decel_distance> * 1.5]  (Incremental probe move)
+  G38.2 Z-[#<retract_distance> * 2]  (Precision probe move)
   
   o230 if [#5070 EQ 0]
     (PRINT, Precision probe failed to touch off)
@@ -118,6 +141,12 @@ o<toolsetter_wco> sub
   (Record the position when measure sensor activated)
   #<z_minus_probed> = #5063
   (PRINT, Measure sensor activated at Z=#<z_minus_probed>)
+  
+  (Verify measurement is reasonable compared to fast probe)
+  #<measurement_diff> = [ABS[#<fast_probe_z> - #<z_minus_probed>]]
+  o235 if [#<measurement_diff> GT #<toolsetter_tolerance>]
+    (PRINT, Warning: Large difference between fast and precision measurements: #<measurement_diff>)
+  o235 endif
   
   (Retract from the touch point)
   G90
