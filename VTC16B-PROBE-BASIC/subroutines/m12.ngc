@@ -36,15 +36,18 @@ G4  P.3 ;dwell
 o130 do
     M66 P4 L3 Q3 ; wait for position sensor to go high
     o131 if [#5399 LT 0]
-        M65 P3 ; Stop atc motor
+        M64 P6 ; Engage brake
+        G4 P0.1 ; Dwell to allow brake engagement
+        M65 P6 ; Release brake
         (abort, Failed to get rotation index)
     o131 endif
-    #3990 = [[[#3990-2] MOD #<number_of_pockets>]+1] ; Pocket is no.1-#<number_of_pockets>
+    G4 P0.05
+    #3990 = [[[#3990+2] MOD #<number_of_pockets>]-1] ; Pocket is no.1-#<number_of_pockets>
     #<steps_to_move> = [#<steps_to_move>-1]
 o130 while [#<steps_to_move> GT 0]
 
 M64 P6 ;brake on
-G4 P.1 ;dwell
+G4 P.02 ;dwell
 M65 P6 ;brake off
 M65 P3 ; Stop motor
 
@@ -54,3 +57,4 @@ M65 P3 ; Stop motor
 o<m12> endsub [1]
 
 M2
+

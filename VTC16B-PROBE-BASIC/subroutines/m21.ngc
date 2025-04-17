@@ -31,11 +31,16 @@ o130 if [EXISTS[#<_ini[atc]y_tool_change_pos>]]
     #<atc_y_tool_change_pos> = #<_ini[atc]y_tool_change_pos>
 o130 endif
 
-M65 P1 ; turn off carousel retract solenoid
-M66 P1 L3 Q1
-
 M5 M9 ; Stop spindle and coolant
 G90
+
+; Call retractatc subroutine to ensure carousel is retracted before we begin
+(debug, Ensuring carousel is retracted before starting tool unload)
+o<retractatc> call
+o132 if [#5399 EQ 0]
+    (debug, WARNING: Initial carousel retraction check failed)
+    (abort, Failed to confirm carousel retracted position - cannot proceed safely)
+o132 endif
 
 ; First move Z to safe clearance height
 G0 G53 Z#<atc_z_tool_clearance_height> 
@@ -43,24 +48,30 @@ G0 G53 Z#<atc_z_tool_clearance_height>
 ; Then move X,Y to tool change position
 G0 G53 X#<atc_x_tool_change_pos> Y#<atc_y_tool_change_pos>
 
-; Then move Z to tool change height
-G0 G53 Z#<atc_z_tool_change_height> ; move to tool change height
-
 o<orientspindle> call
 o135 if [#5399 EQ 0]
     (msg, Spindle orientation failed, aborting tool unload)
     o<m21> return [0]
 o135 endif
 
-M64 P0 ; Turn on carousel extend solenoid
-M66 P1 L3 Q5 ; check for carousel extended sensor
-o140 if [#5399 LT 0]
-    M65 P0 ; turn off carousel extend solenoid
-    (abort, ATC not in position)
+; Then move Z to tool change height
+G0 G53 Z#<atc_z_tool_change_height> ; move to tool change height
+
+; Call extendatc subroutine to extend carousel
+(debug, Extending ATC carousel for tool unload)
+o<extendatc> call
+o140 if [#5399 EQ 0]
+    (debug, WARNING: ATC extension failed)
+    (abort, Failed to extend ATC carousel - cannot proceed with tool unload)
 o140 endif
 
-M24 ; activate drawbar, release the tool
-M5 ; turn off spindle lock
+; Call unclamptool subroutine to release the tool
+(debug, Unclamping tool for storage in carousel)
+o<unclamptool> call
+o145 if [#5399 LT 0]
+    (debug, WARNING: Tool unclamp failed)
+    (abort, Failed to unclamp tool - cannot complete tool storage)
+o145 endif
 
 ; Move Z to clearance height
 G0 G53 Z#<atc_z_tool_clearance_height>

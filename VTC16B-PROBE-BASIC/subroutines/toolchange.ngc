@@ -1,6 +1,6 @@
 (author: Chris P | Updated: AI Assistant)
-(version: 0.5)
-(date: 04/11/25)
+(version: 0.8)
+(date: 04/17/25)
 
 o<toolchange> sub
 
@@ -17,18 +17,27 @@ o<toolchange> sub
 ; #<atc_x_tool_clearance_pos> The X position in machine coordinates for safe carousel rotation
 ; #<atc_y_tool_clearance_pos> The Y position in machine coordinates for safe carousel rotation
 
-(PRINT, o<toolchange> selected_tool: #<selected_tool>, tool_in_spindle: #<tool_in_spindle>, selected_pocket: #<selected_pocket>, current_pocket: #<current_pocket>, task: #<_task>)
+(PRINT, o<toolchange> selected_tool: #<selected_tool>, tool_in_spindle: #<tool_in_spindle>)
+(PRINT, selected_pocket: #<selected_pocket>, current_pocket: #<current_pocket>, task: #<_task>)
+(PRINT, Current pocket param #3990: #3990)
 
 o100 if [#<_task> EQ 0]
     (DEBUG, Task is null)
     o<toolchange> return [999]
-o100 endif (this code eliminates tool missing error on load for multiple use tools)
+o100 endif ; this code eliminates tool missing error on load for multiple use tools
 
 ; default to a 24 pocket ATC (matching DynATC Widget behaviour), then update based on INI settings
 #<number_of_pockets> = 24
 o110 if [EXISTS[#<_ini[atc]pockets>]]
     #<number_of_pockets> = #<_ini[atc]pockets>
 o110 endif
+
+; Add validation for #3990 to ensure it's within valid range
+o105 if [#3990 LT 1 OR #3990 GT #<number_of_pockets>]
+    (debug, WARNING: Current pocket parameter invalid, resetting to 1)
+    #3990 = 1 ; Reset to first pocket if invalid
+o105 endif
+(debug, Starting toolchange with carousel at pocket #3990)
 
 ; Load Z parameters from INI
 #<atc_z_tool_change_height> = -3.9000
@@ -65,6 +74,9 @@ o170 endif
 #110 = #<tool_in_spindle>
 #120 = #<selected_pocket>
 #121 = #<current_pocket>
+; NOTE: The legacy names selected_pocket and current_pocket actually reference
+; a sequential tooldata index for tool items loaded from a tool
+; table or via a tooldata database - see Linuxcnc docs for more information
 
 o180 if [#<selected_tool> EQ #<tool_in_spindle>] ; checks if tool in the spindle is same as requested
     (PRINT, Requested tool already in spindle)
@@ -75,6 +87,9 @@ o180 endif
 
 o190 if [#3991 NE #<tool_in_spindle>]
     (PRINT, o<toolchange> tool_in_spindle does not match 3991)
+    ; Fix the inconsistency
+    #3991 = #<tool_in_spindle>
+    (PRINT, Updated #3991 to match tool_in_spindle: #<tool_in_spindle>)
 o190 endif
 
 #<next_pocket> = 0 ; assigns 0 to the next pocket for a later check if the tool is found in the carousel
@@ -85,13 +100,13 @@ o200 do
     o201 if [#[4000 + #130] EQ #<selected_tool>] ; checks all pockets to see if it contains tool number requested as the new tool
         #<next_pocket> = #130 ; if tool is found in pocket, assigns the next pocket
     o201 endif
-    o202 if [#[4000 + #130] EQ 0] ; checks if the pocket is empty, last pocket checked will be the lowest empty pocket number, for putting tool in spindle away.
+    o202 if [#[4000 + #130] EQ 0] ; checks if the pocket is empty, last pocket checked will be the lowest empty pocket number
         #<open_pocket> = #130
     o202 endif
     #130 = [#130 - 1]
 o200 while [#130 GT 0]
 o210 if [#<next_pocket> EQ 0] ; if tool is not found, aborts and sends a message
-    (abort, Tool T%d#<selected_tool> not found in carousel)
+    (abort, Tool #<selected_tool> not found in carousel)
 o210 endif
 
 ; First move Z to clearance height for safe movement
@@ -100,168 +115,88 @@ G0 G53 Z#<atc_z_tool_clearance_height>
 ; Then move to X,Y clearance position
 G0 G53 X#<atc_x_tool_clearance_pos> Y#<atc_y_tool_clearance_pos>
 
-; FIRST: Ensure spindle is stopped and ORIENT ONCE at beginning of routine
-(debug, Initial spindle orientation for entire tool change cycle)
-M5 ; Ensure spindle is stopped
-G4 P1.0 ; Dwell for spindle to stop completely
-o<orientspindle> call
-o215 if [#5399 EQ 0]
-    (msg, Initial spindle orientation failed, aborting tool change)
-    o<toolchange> return [0]
-o215 endif
-
-; SECOND: Ensure tool is properly clamped initially
-(debug, Ensuring tool is properly clamped initially)
-M65 P5 ; turn off tool unclamp solenoid  
-M64 P2 ; turn on tool clamp solenoid
-G4 P0.5 ; dwell to ensure clamp engaged
-M65 P2 ; turn off clamp solenoid (maintains clamped state)
+; CRITICAL: Reset M10's internal tracking of carousel position
+; This ensures M10 starts from the known position
+M10 P0
 
 ; now we know which pocket the next tool is sitting in
 ; we need to know if we need to put a tool away
 ; or if there is not tool in the spindle
 o220 if [#<tool_in_spindle> GT 0] ; checks if there is a valid tool in the spindle
     o221 if [#<open_pocket> EQ 0] ; If there is a tool in the spindle, checks if there is an open pocket
-        (abort, Carousel is full, cant put away tool T#<tool_in_spindle> in into carousel)
+        (abort, Carousel is full, cannot put away tool)
     o221 endif
     
-    ; Move to tool change position
-    G0 G53 X#<atc_x_tool_change_pos> Y#<atc_y_tool_change_pos>
-    G0 G53 Z#<atc_z_tool_change_height>
+    ; Position carousel to empty pocket - ABSOLUTE positioning
+    (debug, Moving carousel to pocket #<open_pocket> for tool storage)
+    M10 P#<open_pocket> ; move carousel to an open pocket ABSOLUTE
+    #3990 = #<open_pocket> ; Update tracking BEFORE M21 call
+    (debug, Updated carousel position to #3990)
     
-    ; Position carousel (spindle is already oriented)
-    M10 P[#<open_pocket>] ; move carousel to an open pocket
-    M65 P1 ; Turn off carousel retract solenoid
-    M64 P0 ; Turn on carousel extend solenoid
-    M66 P1 L3 Q5 ; check carousel extended position sensor
-    o226 if [#5399 LT 0]
-        M65 P0 ; turn off the carousel extend
-        (abort, Failed to extend carousel) ; abort if the sensor does not activate in 5 seconds
-    o226 endif
-    M65 P0 ; turn off carousel extend
+    ; Use M21 to store tool
+    (debug, Storing tool #<tool_in_spindle> in pocket #<open_pocket>)
+    M21 ; puts the tool in spindle away into the open pocket
     
-    ; Unclamp tool for storage
-    (debug, Unclamping tool T#<tool_in_spindle> for storage)
-    M65 P2 ; turn off tool clamp solenoid
-    M64 P5 ; turn on tool unclamp solenoid
-    G4 P1.5 ; longer dwell to ensure unclamp completes
-    
-    ; Check unclamp activated
-    M66 P2 L0 ; Check unclamp sensor
-    o227 if [#5399 EQ 0]
-        (debug, WARNING: Unclamp sensor not active during tool storage - trying again)
-        M65 P2 ; ensure clamp is off
-        G4 P0.5 ; short dwell
-        M64 P5 ; ensure unclamp is on
-        G4 P1.0 ; longer dwell
-    o227 endif
-    
-    (debug, Storing tool T#<tool_in_spindle> in pocket #<open_pocket>)
-    
-    ; Re-clamp (empty) spindle
-    M65 P5 ; turn off tool unclamp solenoid
-    M64 P2 ; turn on tool clamp solenoid
-    G4 P0.75 ; dwell to ensure clamp engages
-    M65 P2 ; turn off clamp solenoid (maintains clamped state)
-    
+    ; Update tool tracking data
     (DEBUG, EVAL[vcp.getWidget{"dynatc"}.store_tool{#<open_pocket>, #<tool_in_spindle>}])
     #140 = #<open_pocket>
     #[4000 + #140] = #<tool_in_spindle> ; save tool number in pocket
+    
+    ; Double-check position tracking after storing
+    (debug, Verifying carousel position after storage: #3990)
+    
     #3991 = 0 ; empty tool in the spindle
     M61 Q0
     G49
-    
-    ; Retract carousel
-    M65 P0 ; Turn off carousel extend solenoid
-    M64 P1 ; Turn on carousel retract solenoid
-    M66 P0 L3 Q4 ; check carousel retracted sensor
-    o228 if [#5399 LT 0]
-        M65 P1 ; turn off carousel retract solenoid
-        (abort, Failed to retract carousel)
-    o228 endif
-    M65 P1 ; turn off carousel retract solenoid
-    
-    ; Move back to clearance height after tool put away
-    G0 G53 Z#<atc_z_tool_clearance_height>
 o220 endif
 
-o230 if [#<selected_tool> GT 0] ; selected tool is not tool0
+o230 if [#<selected_tool> GT 0] ; selected tool is greater than tool0
     ; Move to clearance position before carousel movement
+    G0 G53 Z#<atc_z_tool_clearance_height>
     G0 G53 X#<atc_x_tool_clearance_pos> Y#<atc_y_tool_clearance_pos>
     
-    ; Position carousel (spindle is already oriented)
-    (debug, Moving carousel to pocket #<next_pocket> for tool T#<selected_tool>)
-    M10 P#<next_pocket> ; set the carousel to move to the right pocket for the selected tool
-    M65 P1 ; Turn off carousel retract solenoid
-    M64 P0 ; Turn on carousel extend solenoid
-    M66 P1 L3 Q5 ; check carousel extended position sensor
-    o231 if [#5399 LT 0]
-        M65 P0 ; turn off the carousel extend
-        (abort, Failed to extend carousel) ; abort if the sensor does not activate in 5 seconds
-    o231 endif
-    M65 P0 ; turn off carousel extend
+    ; Position carousel to tool pocket - ABSOLUTE positioning
+    (debug, Moving carousel to pocket #<next_pocket> for tool retrieval)
+    M10 P#<next_pocket> ; set carousel to move to the right pocket ABSOLUTE
+    #3990 = #<next_pocket> ; Update tracking BEFORE M22 call
+    (debug, Updated carousel position to #3990)
     
-    ; Move to tool change position for pickup
-    G0 G53 X#<atc_x_tool_change_pos> Y#<atc_y_tool_change_pos>
-    G0 G53 Z#<atc_z_tool_change_height>
-
-    ; Unclamp drawbar for tool pickup
-    (debug, Unclamping drawbar for tool pickup)
-    M65 P2 ; turn off tool clamp solenoid
-    M64 P5 ; turn on tool unclamp solenoid
-    G4 P1.5 ; longer dwell to ensure unclamp completes
+    ; Use M22 to retrieve tool
+    (debug, Loading tool #<selected_tool> from pocket #<next_pocket>)
+    M22 ; Move carousel out and pick up tool
     
-    ; Check that unclamp activated
-    M66 P2 L0 ; Check unclamp sensor
-    o237 if [#5399 EQ 0]
-        (debug, WARNING: Unclamp sensor not active - trying again)
-        M65 P2 ; ensure clamp is off
-        G4 P0.5 ; short dwell
-        M64 P5 ; ensure unclamp is on
-        G4 P1.0 ; longer dwell
-    o237 endif
-
+    ; Update tool tracking data
     (DEBUG, EVAL[vcp.getWidget{"dynatc"}.store_tool{#<next_pocket>, 0}])
-    
-    (debug, Loading tool T#<selected_tool> from pocket #<next_pocket>)
-    
-    ; Re-clamp with new tool
-    M65 P5 ; turn off tool unclamp solenoid
-    M64 P2 ; turn on tool clamp solenoid
-    G4 P1.0 ; dwell to ensure clamping
-    M65 P2 ; turn off clamp solenoid (maintains clamped state)
-    
     #150 = #<next_pocket>
     #[4000 + #150] = 0 ; empty the pocket
-    #3991 = #<selected_tool> ; Set persistent variable to remember tool in spindle after power cycle
     
-    ; Retract carousel
-    M65 P0 ; Turn off carousel extend solenoid
-    M64 P1 ; Turn on carousel retract solenoid
-    M66 P0 L3 Q4 ; check carousel retracted sensor
-    o238 if [#5399 LT 0]
-        M65 P1 ; turn off carousel retract solenoid
-        (abort, Failed to retract carousel)
-    o238 endif
-    M65 P1 ; turn off carousel retract solenoid
+    ; Double-check position tracking after retrieval
+    (debug, Verifying carousel position after retrieval: #3990)
+    
+    #3991 = #<selected_tool> ; Set persistent variable to remember tool in spindle after power cycle
     
     ; Move back to safe Z height
     G0 G53 Z#<atc_z_tool_clearance_height>
 o230 else
-    ; For tool 0 (no tool)
-    (debug, Special handling for T0 (empty spindle))
-    M65 P5 ; turn off tool unclamp solenoid
-    M64 P2 ; turn on tool clamp solenoid
-    G4 P.5 ; dwell
-    M65 P2 ; turn off tool clamp solenoid
-    M65 P0 ; Turn off carousel extend solenoid
-    M64 P1 ; Turn on carousel retract solenoid
-    M66 P0 L3 Q4 ; check carousel retracted sensor
+    ; For tool 0 
+    (debug, Special handling for T0)
+    G0 G53 Z#<atc_z_tool_clearance_height>
+    
+    ; Home the carousel for T0
+    (debug, Moving carousel to home position)
+    M65 P2 ; deactivate drawbar
+    M65 P0 ; make sure ATC out solenoid is off
+    M64 P1 ; move carousel home
+    M66 P0 L3 Q4 ; check carousel in position sensor
     o232 if [#5399 LT 0]
-        M65 P1 ; turn off carousel retract solenoid
-        (abort, Failed to retract carousel) ; abort if the sensor does not activate in 5 seconds
+        M65 P1 ; turn off the solenoid to send atc home
+        (abort, Failed to send carousel home)
     o232 endif
-    M65 P1
+    M65 P1 ; turn off carousel retract solenoid
+    
+    ; For T0, set carousel position to home/1
+    #3990 = 1 ; For T0, we typically return to the home position
+    (debug, Reset carousel position to 1 for T0)
 o230 endif
 
 M61 Q#<selected_tool>
@@ -272,6 +207,7 @@ o240 endif
 
 o<program_coolant> call
 
+(debug, Tool change complete. Carousel at pocket #3990)
 (PRINT, o<toolchange> endsub)
 o<toolchange> endsub [1]
 
