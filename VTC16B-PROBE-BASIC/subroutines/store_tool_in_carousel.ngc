@@ -1,43 +1,14 @@
-(author: Chris P, updated by DDJ Mech Services)
-(version: 0.3)
-(date: 04/16/25)
+(author: Chris P)
+(version: 0.2)
+(date: 06/27/24)
 
-(Store spindle tool in carousel macro)
+(store spindle tool in carousel macro)
 
 o<store_tool_in_carousel> sub
-
-(Get current tool and pocket from Probe Basic parameters)
-#<current_tool> = #3991
-#<current_pocket> = #3990
-
-(Get tool change positions from INI file)
-#<z_tool_change_position> = #<_ini[atc]z_tool_change_height>
-#<x_tool_change_position> = #<_ini[atc]x_tool_change_pos>
-#<y_tool_change_position> = #<_ini[atc]y_tool_change_pos>
-
-(DEBUG, Storing tool #<current_tool> from pocket #<current_pocket> in carousel)
-
-G49    (Cancel tool length compensation)
-G90    (Ensure absolute coordinates)
-
-(First move Z to safe height)
-G53 G0 Z0
-
-(Move to tool change position)
-G53 G0 Z[#<z_tool_change_position>]
-G53 G0 X[#<x_tool_change_position>] Y[#<y_tool_change_position>]
-
-(Check if we already have tool 0 loaded - if yes, nothing to do)
-o100 if [#<current_tool> EQ 0]
-    (DEBUG, Tool 0 already loaded, nothing to store)
-    o<store_tool_in_carousel> return
-o100 endif
-
-(Execute tool change to store current tool and load tool 0)
+(DEBUG, Running store tool in carousel subroutine)
+G49
 T0 M6
-
-(DEBUG, Tool #<current_tool> stored successfully)
-
+(DEBUG, Tool storage complete)
 o<store_tool_in_carousel> endsub
 
-M2 (end program)
+M2
