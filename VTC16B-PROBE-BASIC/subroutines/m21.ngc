@@ -43,16 +43,16 @@ o132 if [#5399 EQ 0]
 o132 endif
 
 ; First move Z to safe clearance height
-G0 G53 Z#<atc_z_tool_clearance_height> 
+; G0 G53 Z#<atc_z_tool_clearance_height> 
 
 ; Then move X,Y to tool change position
-G0 G53 X#<atc_x_tool_change_pos> Y#<atc_y_tool_change_pos>
+; G0 G53 X#<atc_x_tool_change_pos> Y#<atc_y_tool_change_pos>
 
-o<orientspindle> call
-o135 if [#5399 EQ 0]
-    (msg, Spindle orientation failed, aborting tool unload)
-    o<m21> return [0]
-o135 endif
+; O<orientspindle> call
+; o135 if [#5399 EQ 0]
+;    (msg, Spindle orientation failed, aborting tool unload)
+;    o<m21> return [0]
+; o135 endif
 
 ; Then move Z to tool change height
 G0 G53 Z#<atc_z_tool_change_height> ; move to tool change height

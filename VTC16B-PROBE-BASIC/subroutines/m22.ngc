@@ -17,22 +17,22 @@ o110 endif
 
 ; Check if spindle is oriented and orient if needed
 (debug, Checking spindle orientation status)
-M5 ; Ensure spindle is stopped
-G4 P1.0 ; Dwell for spindle to stop completely
+; M5 ; Ensure spindle is stopped
+; G4 P1.0 ; Dwell for spindle to stop completely
 
 ; Call the orientspindle subroutine
-o<orientspindle> call
-o115 if [#5399 EQ 0]
-    (debug, WARNING: Spindle orientation failed)
-    (abort, Failed to orient spindle - cannot proceed with tool pickup)
-o115 endif
+; o<orientspindle> call
+; o115 if [#5399 EQ 0]
+;    (debug, WARNING: Spindle orientation failed)
+;    (abort, Failed to orient spindle - cannot proceed with tool pickup)
+; o115 endif
 
 ; Call the unclamptool subroutine
-o<unclamptool> call
-o116 if [#5399 LT 0]
-    (debug, WARNING: Tool unclamp failed)
-    (abort, Failed to unclamp tool - cannot proceed with tool pickup)
-o116 endif
+; o<unclamptool> call
+; o116 if [#5399 LT 0]
+;    (debug, WARNING: Tool unclamp failed)
+;    (abort, Failed to unclamp tool - cannot proceed with tool pickup)
+; o116 endif
 
 ; Call the extendatc subroutine to extend carousel
 (debug, Extending ATC carousel)

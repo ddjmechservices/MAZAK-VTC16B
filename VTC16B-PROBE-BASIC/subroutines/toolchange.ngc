@@ -1,6 +1,6 @@
 (author: Chris P | Updated: AI Assistant)
-(version: 0.8)
-(date: 04/17/25)
+(version: 0.9)
+(date: 04/18/25)
 
 o<toolchange> sub
 
@@ -115,9 +115,16 @@ G0 G53 Z#<atc_z_tool_clearance_height>
 ; Then move to X,Y clearance position
 G0 G53 X#<atc_x_tool_clearance_pos> Y#<atc_y_tool_clearance_pos>
 
-; CRITICAL: Reset M10's internal tracking of carousel position
-; This ensures M10 starts from the known position
-M10 P0
+; Centralized spindle orientation for entire tool change process
+; This avoids redundant orientation calls in M21 and M22
+(debug, Orienting spindle for tool change operations)
+M5 ; Ensure spindle is stopped
+G4 P1.0 ; Dwell for spindle to stop completely
+o<orientspindle> call
+o215 if [#5399 EQ 0]
+    (debug, WARNING: Spindle orientation failed)
+    (abort, Failed to orient spindle - cannot proceed with tool change)
+o215 endif
 
 ; now we know which pocket the next tool is sitting in
 ; we need to know if we need to put a tool away
@@ -130,7 +137,7 @@ o220 if [#<tool_in_spindle> GT 0] ; checks if there is a valid tool in the spind
     ; Position carousel to empty pocket - ABSOLUTE positioning
     (debug, Moving carousel to pocket #<open_pocket> for tool storage)
     M10 P#<open_pocket> ; move carousel to an open pocket ABSOLUTE
-    #3990 = #<open_pocket> ; Update tracking BEFORE M21 call
+    ; #3990 = #<open_pocket> ; Update tracking BEFORE M21 call
     (debug, Updated carousel position to #3990)
     
     ; Use M21 to store tool
@@ -158,7 +165,7 @@ o230 if [#<selected_tool> GT 0] ; selected tool is greater than tool0
     ; Position carousel to tool pocket - ABSOLUTE positioning
     (debug, Moving carousel to pocket #<next_pocket> for tool retrieval)
     M10 P#<next_pocket> ; set carousel to move to the right pocket ABSOLUTE
-    #3990 = #<next_pocket> ; Update tracking BEFORE M22 call
+    ; #3990 = #<next_pocket> ; Update tracking BEFORE M22 call
     (debug, Updated carousel position to #3990)
     
     ; Use M22 to retrieve tool
@@ -184,15 +191,20 @@ o230 else
     
     ; Home the carousel for T0
     (debug, Moving carousel to home position)
-    M65 P2 ; deactivate drawbar
-    M65 P0 ; make sure ATC out solenoid is off
-    M64 P1 ; move carousel home
-    M66 P0 L3 Q4 ; check carousel in position sensor
-    o232 if [#5399 LT 0]
-        M65 P1 ; turn off the solenoid to send atc home
-        (abort, Failed to send carousel home)
-    o232 endif
-    M65 P1 ; turn off carousel retract solenoid
+    
+    (debug, Retracting ATC carousel)
+o<retractatc> call
+o231 if [#5399 EQ 0]  ; FIXED: Changed from o130 to o231
+    (debug, WARNING: ATC retraction failed)
+    (abort, Failed to retract carousel - cannot continue safely)
+o231 endif
+
+(debug, Clamping tool)
+o<clamptool> call
+o232 if [#5399 LT 0]  ; FIXED: Changed from o120 to o232
+    (debug, WARNING: Tool clamp failed)
+    (abort, Failed to clamp tool - cannot continue safely)
+o232 endif
     
     ; For T0, set carousel position to home/1
     #3990 = 1 ; For T0, we typically return to the home position
