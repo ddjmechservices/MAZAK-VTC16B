@@ -54,9 +54,15 @@ net flood-coolant iocontrol.0.coolant-flood => Y0F-flood-coolant
 # tool air blast Y29
 net mist-coolant iocontrol.0.coolant-mist => Y16-work-air-blast
 #
-net lube <= halui.machine.is-on
+# Create shared machine state signal
+net machine-state halui.machine.is-on
+
+# Connect lube to use the shared machine state
+net lube <= machine-state
 net lube => Y17-spindle-lube Y18-lube-unit
-net lube-level-ok iocontrol.0.lube_level <= X12n-way-lube-level
+#net lube <= halui.machine.is-on
+#net lube => Y17-spindle-lube Y18-lube-unit
+#net lube-level-ok iocontrol.0.lube_level <= X12n-way-lube-level
 
 
 # main-trans-overheat		X2Cn-main-trans-overheat	1
